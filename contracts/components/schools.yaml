@@ -1,0 +1,168 @@
+# School Registration API Contract
+
+paths:
+  /schools:
+    post:
+      operationId: createSchool
+      summary: Register a new school
+      description: |
+        Registers a school for tournament participation.
+        All fields are validated server-side per the schema rules below.
+      tags:
+        - Schools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolRequest'
+            examples:
+              valid:
+                summary: Valid registration
+                value:
+                  name: "Springfield High School"
+                  district: "Springfield District"
+                  contactName: "John Smith"
+                  contactEmail: "john.smith@springfield.edu"
+                  contactPhone: "+1-555-123-4567"
+              minimal:
+                summary: Minimal required fields
+                value:
+                  name: "Central Academy"
+                  district: "Central District"
+                  contactName: "Jane Doe"
+                  contactEmail: "jane@central.edu"
+      responses:
+        '201':
+          description: School registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/ValidationError'
+              examples:
+                validation_error:
+                  summary: Validation errors
+                  value:
+                    statusCode: 422
+                    message:
+                      - "name should not be empty"
+                      - "contactEmail must be a valid email"
+                    error: "Unprocessable Entity"
+                    timestamp: "2026-01-31T14:30:00.000Z"
+                    details:
+                      name: ["name should not be empty"]
+                      contactEmail: ["contactEmail must be a valid email"]
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Request Schema
+    # ─────────────────────────────────────────────────────────────────
+    CreateSchoolRequest:
+      type: object
+      required:
+        - name
+        - district
+        - contactName
+        - contactEmail
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Official name of the school
+          example: "Springfield High School"
+        district:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: School district name
+          example: "Springfield District"
+        contactName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Name of the primary contact person
+          example: "John Smith"
+        contactEmail:
+          type: string
+          format: email
+          maxLength: 255
+          description: Email address of the contact person (must be valid email format)
+          example: "john.smith@springfield.edu"
+        contactPhone:
+          type: string
+          maxLength: 20
+          pattern: '^[\d\s\-\+\(\)]+$'
+          description: Phone number (optional, accepts digits, spaces, dashes, parentheses, plus sign)
+          example: "+1-555-123-4567"
+
+    # ─────────────────────────────────────────────────────────────────
+    # Response Schema
+    # ─────────────────────────────────────────────────────────────────
+    SchoolResponse:
+      type: object
+      required:
+        - id
+        - name
+        - district
+        - contactName
+        - contactEmail
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the school
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          description: Official name of the school
+          example: "Springfield High School"
+        district:
+          type: string
+          description: School district name
+          example: "Springfield District"
+        contactName:
+          type: string
+          description: Name of the primary contact person
+          example: "John Smith"
+        contactEmail:
+          type: string
+          format: email
+          description: Email address of the contact person
+          example: "john.smith@springfield.edu"
+        contactPhone:
+          type:
+            - string
+            - 'null'
+          description: Phone number (if provided)
+          example: "+1-555-123-4567"
+        createdAt:
+          type: string
+          format: date-time
+          description: When the school was registered
+          example: "2026-01-31T14:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the school record was last updated
+          example: "2026-01-31T14:30:00.000Z"

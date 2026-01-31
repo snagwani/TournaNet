@@ -1,0 +1,89 @@
+openapi: 3.1.0
+info:
+  title: TournaNet API
+  description: |
+    Contract-first API specification for TournaNet tournament management platform.
+    This specification serves as the single source of truth for API contracts.
+  version: 0.1.0
+  contact:
+    name: TournaNet Team
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.tournanet.app
+    description: Production
+
+tags:
+  - name: Schools
+    description: School registration and management
+
+# Default security - can be overridden per operation
+security: []
+
+paths:
+  /schools:
+    $ref: './components/schools.yaml#/paths/~1schools'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authenticated endpoints
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - statusCode
+        - message
+        - error
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          description: Error message(s)
+          example: "Validation failed"
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2026-01-31T14:30:00.000Z"
+
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            message:
+              type: array
+              items:
+                type: string
+              example:
+                - "name must be a string"
+                - "contactEmail must be a valid email"
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              description: Field-specific validation errors
+              example:
+                name: ["name must be a string", "name should not be empty"]
+                contactEmail: ["contactEmail must be a valid email"]
+
