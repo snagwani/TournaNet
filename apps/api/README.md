@@ -1,28 +1,50 @@
 # TournaNet API
 
-Node.js backend service.
+NestJS backend for tournament management.
 
-## Architecture
+## Tech Stack
+
+- **Framework**: NestJS 10
+- **Database**: PostgreSQL + Prisma ORM
+- **Validation**: class-validator + ValidationPipe
+- **Logging**: Structured JSON (prod) / Pretty (dev)
+
+## Project Structure
 
 ```
 src/
-├── controllers/    # HTTP handlers
-├── services/       # Business logic
-├── repositories/   # Database access
-├── entities/       # Data models
-├── middleware/     # Auth, validation
-└── websockets/     # Real-time events
+├── main.ts                 # Bootstrap with global pipes/filters
+├── app.module.ts           # Root module
+├── config/                 # Environment configuration
+├── common/
+│   ├── filters/            # Exception filters
+│   ├── logger/             # Structured logging
+│   └── prisma/             # Database client
+└── health/                 # Health check endpoint
 ```
 
-## Key Responsibilities
-
-- RESTful API for tournament operations
-- WebSocket server for real-time scoring
-- Role-based access control (RBAC)
-- PostgreSQL data management
-
-## Development
+## Getting Started
 
 ```bash
+# Install dependencies
+pnpm install
+
+# Generate Prisma client
+pnpm prisma:generate
+
+# Run migrations
+pnpm prisma:migrate
+
+# Start development server
 pnpm dev
 ```
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/health | Health check with DB status |
+
+## Environment Variables
+
+See `.env.example` for required configuration.

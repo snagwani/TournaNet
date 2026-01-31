@@ -1,0 +1,18 @@
+// Prisma Schema for TournaNet
+// This is a minimal schema to bootstrap the database connection.
+// Full schema will be defined during database design phase.
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// Placeholder model - will be replaced with actual schema
+model HealthCheck {
+    id        String   @id @default(cuid())
+    checkedAt DateTime @default(now())
+}
