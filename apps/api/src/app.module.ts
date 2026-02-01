@@ -10,6 +10,7 @@ import { EventsModule } from './events/events.module';
 import { HeatsModule } from './heats/heats.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { ResultsModule } from './results/results.module';
+import { ScoreboardModule } from './scoreboard/scoreboard.module';
 
 @Module({
     imports: [
@@ -32,6 +33,7 @@ import { ResultsModule } from './results/results.module';
         HeatsModule,
         ScheduleModule,
         ResultsModule,
+        ScoreboardModule,
     ],
 })
 export class AppModule { }
