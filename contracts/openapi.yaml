@@ -26,6 +26,8 @@ tags:
     description: Heat generation and management
   - name: Schedule
     description: Schedule generation and conflict management
+  - name: Results
+    description: Scoring and result entry
 
 # Default security - can be overridden per operation
 security: []
@@ -41,6 +43,8 @@ paths:
     $ref: './components/heats.yaml#/paths/~1events~1{eventId}~1heats~1generate'
   /schedule/generate:
     $ref: './components/schedule.yaml#/paths/~1schedule~1generate'
+  /events/{eventId}/heats/{heatId}/results:
+    $ref: './components/results.yaml#/paths/~1events~1{eventId}~1heats~1{heatId}~1results'
 
 components:
   securitySchemes:

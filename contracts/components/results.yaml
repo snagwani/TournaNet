@@ -1,0 +1,152 @@
+# Scoring and Results Contract
+
+paths:
+  /events/{eventId}/heats/{heatId}/results:
+    post:
+      operationId: submitResults
+      summary: Submit results for a heat or flight
+      description: |
+        Submit results for a completed heat.
+        **Business Rules:**
+        - **Idempotency**: Submitting results for an already scored heat returns 409 Conflict.
+        - **Validation**:
+          - `FINISHED` status must have a valid `resultValue`.
+          - `DNS`, `DNF`, `DQ` must NOT have a value.
+        - **Ranking**:
+          - TRACK: Sorted by Time (Ascending).
+          - FIELD: Sorted by Distance (Descending).
+        - **Stats**: Response includes summary counts (finished, dns, etc).
+      tags:
+        - Results
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: heatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResultsRequest'
+      responses:
+        '201':
+          description: Results submitted and ranked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultsResponse'
+        '400':
+          description: Business rule violation (e.g. invalid status/value pair)
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '404':
+          description: Event or Heat not found
+        '409':
+          description: Results already submitted
+        '422':
+          description: Validation failed
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Request Schema
+    # ─────────────────────────────────────────────────────────────────
+    SubmitResultsRequest:
+      type: object
+      required:
+        - results
+      properties:
+        results:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ResultEntry'
+
+    ResultEntry:
+      type: object
+      required:
+        - athleteId
+        - bibNumber
+        - status
+      properties:
+        athleteId:
+          type: string
+          format: uuid
+        bibNumber:
+          type: integer
+        resultValue:
+          type: [string, 'null']
+          description: |
+            Performance value. 
+            - Track: Can be seconds "10.5" or "10.5s".
+            - Field: Meters "5.62" or "5.62m".
+            Null if status is not FINISHED.
+        status:
+          type: string
+          enum: [FINISHED, DNS, DNF, DQ]
+        notes:
+          type: string
+          description: Optional remarks (e.g. reason for DQ)
+    
+    # ─────────────────────────────────────────────────────────────────
+    # Response Schema
+    # ─────────────────────────────────────────────────────────────────
+    ResultsResponse:
+      type: object
+      required:
+        - eventId
+        - heatId
+        - results
+        - summary
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        heatId:
+          type: string
+          format: uuid
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RankedResult'
+        summary:
+          $ref: '#/components/schemas/ResultSummary'
+
+    RankedResult:
+      allOf:
+        - $ref: '#/components/schemas/ResultEntry'
+        - type: object
+          properties:
+            rank:
+              type: [integer, 'null']
+              description: Position in the heat (1st, 2nd...). Null if DNF/DNS/DQ.
+            qualified:
+              type: boolean
+              description: Whether athlete qualifies for next round (future feature)
+
+    ResultSummary:
+      type: object
+      properties:
+        totalAthletes:
+          type: integer
+        finishedCount:
+          type: integer
+        dnsCount:
+          type: integer
+        dnfCount:
+          type: integer
+        dqCount:
+          type: integer
