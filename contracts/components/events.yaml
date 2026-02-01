@@ -1,0 +1,188 @@
+# Event Configuration Contract
+
+paths:
+  /events:
+    post:
+      operationId: createEvent
+      summary: Create and configure an athletics event
+      description: |
+        Creates a new event configuration.
+        
+        **Business Rules:**
+        - **Time Window:** 08:00 - 17:00
+        - **Lunch Break:** No event can start between 13:00 - 14:00.
+        - **Uniqueness:** Name + Gender + Category must be unique per tournament.
+        - **Rules:** Must provide correct rule config for TRACK or FIELD.
+      tags:
+        - Events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          description: Business rule violation (e.g. invalid time, rule mismatch)
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/ValidationError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Request Schema
+    # ─────────────────────────────────────────────────────────────────
+    CreateEventRequest:
+      type: object
+      required:
+        - name
+        - eventType
+        - gender
+        - category
+        - date
+        - startTime
+        - rules
+      properties:
+        name:
+          type: string
+          description: Name of the event (e.g. "100m", "Long Jump")
+          example: "100m Dash"
+        eventType:
+          type: string
+          enum: [TRACK, FIELD]
+          description: Type of event
+        gender:
+          type: string
+          enum: [MALE, FEMALE]
+        category:
+          type: string
+          enum: [U14, U17, U19]
+        date:
+          type: string
+          format: date
+          description: Event date (ISO 8601)
+          example: "2026-05-20"
+        startTime:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          description: Start time in HH:mm format (24h)
+          example: "09:30"
+        venue:
+          type: string
+          description: specific location or stadium area
+          example: "Main Stadium Track"
+        rules:
+          description: Event-specific configuration
+          oneOf:
+            - $ref: '#/components/schemas/TrackRules'
+            - $ref: '#/components/schemas/FieldRules'
+          discriminator:
+            propertyName: eventType
+            mapping:
+              TRACK: '#/components/schemas/TrackRules'
+              FIELD: '#/components/schemas/FieldRules'
+
+    # ─────────────────────────────────────────────────────────────────
+    # Rule Schemas
+    # ─────────────────────────────────────────────────────────────────
+    TrackRules:
+      type: object
+      description: Configuration for Track events
+      properties:
+        maxAthletesPerHeat:
+          type: integer
+          default: 8
+          minimum: 1
+        qualificationRule:
+          type: string
+          default: "Top 2 per heat + next 2 fastest"
+          description: Description of how athletes advance
+
+    FieldRules:
+      type: object
+      description: Configuration for Field events
+      properties:
+        maxAthletesPerFlight:
+          type: integer
+          default: 12
+          minimum: 1
+        attempts:
+          type: integer
+          default: 3
+          minimum: 1
+        finalists:
+          type: integer
+          default: 8
+          minimum: 1
+
+    # ─────────────────────────────────────────────────────────────────
+    # Response Schema
+    # ─────────────────────────────────────────────────────────────────
+    EventResponse:
+      type: object
+      required:
+        - id
+        - name
+        - eventType
+        - gender
+        - category
+        - date
+        - startTime
+        - rules
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        eventType:
+          type: string
+          enum: [TRACK, FIELD]
+        gender:
+          type: string
+          enum: [MALE, FEMALE]
+        category:
+          type: string
+          enum: [U14, U17, U19]
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+        venue:
+          type:
+            - string
+            - 'null'
+        rules:
+          # Polymorphic response - could be explicitly typed or generic object depending on client needs
+          # For simplicity here, we can reuse the schemas or just object.
+          oneOf:
+            - $ref: '#/components/schemas/TrackRules'
+            - $ref: '#/components/schemas/FieldRules'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

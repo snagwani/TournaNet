@@ -20,6 +20,8 @@ tags:
     description: School registration and management
   - name: Athletes
     description: Athlete registration and management
+  - name: Events
+    description: Event configuration and scheduling
 
 # Default security - can be overridden per operation
 security: []
@@ -29,6 +31,8 @@ paths:
     $ref: './components/schools.yaml#/paths/~1schools'
   /athletes:
     $ref: './components/athletes.yaml#/paths/~1athletes'
+  /events:
+    $ref: './components/events.yaml#/paths/~1events'
 
 components:
   securitySchemes:

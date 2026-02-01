@@ -59,3 +59,25 @@ model Athlete {
     @@unique([name, age, schoolId])
     @@map("athletes")
 }
+
+enum EventType {
+    TRACK
+    FIELD
+}
+
+model Event {
+    id        String          @id @default(uuid())
+    name      String          @db.VarChar(100)
+    eventType EventType
+    gender    Gender
+    category  AthleteCategory
+    date      DateTime        @db.Date
+    startTime String          @db.VarChar(5) // HH:mm
+    venue     String?         @db.VarChar(100)
+    rules     Json            // Stores TrackRules or FieldRules
+    createdAt DateTime        @default(now())
+    updatedAt DateTime        @updatedAt
+
+    @@unique([name, gender, category])
+    @@map("events")
+}
