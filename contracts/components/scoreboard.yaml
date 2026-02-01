@@ -1,0 +1,259 @@
+# Scoreboard Contract
+
+paths:
+  /scoreboard/current:
+    get:
+      operationId: getCurrentEvents
+      summary: Get events currently in progress
+      description: Returns a list of ongoing events with live results.
+      tags:
+        - Scoreboard
+      responses:
+        '200':
+          description: List of current events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreboardEventsResponse'
+
+  /scoreboard/upcoming:
+    get:
+      operationId: getUpcomingEvents
+      summary: Get upcoming events
+      description: Returns events scheduled to start soon.
+      tags:
+        - Scoreboard
+      parameters:
+        - name: windowMinutes
+          in: query
+          schema:
+            type: integer
+            default: 120
+          description: Lookahead window in minutes
+      responses:
+        '200':
+          description: List of upcoming events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreboardUpcomingResponse'
+
+  /scoreboard/results:
+    get:
+      operationId: getCompletedEvents
+      summary: Get completed events with results
+      description: Returns finished events and final rankings.
+      tags:
+        - Scoreboard
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by date
+        - name: eventType
+          in: query
+          schema:
+            type: string
+            enum: [TRACK, FIELD]
+      responses:
+        '200':
+          description: List of completed events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreboardResultsResponse'
+
+  /scoreboard/medals:
+    get:
+      operationId: getMedalTally
+      summary: Get medal tally
+      description: Returns school standings based on Gold/Silver/Bronze counts.
+      tags:
+        - Scoreboard
+      responses:
+        '200':
+          description: Medal tally
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedalTallyResponse'
+
+  /scoreboard/athletes/search:
+    get:
+      operationId: searchAthletes
+      summary: Search athlete performance
+      tags:
+        - Scoreboard
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search by name or bib number
+      responses:
+        '200':
+          description: Athlete search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AthleteSearchResponse'
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Scoreboard Schemas
+    # ─────────────────────────────────────────────────────────────────
+    ScoreboardEventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreboardEvent'
+
+    ScoreboardUpcomingResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpcomingEvent'
+
+    ScoreboardResultsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreboardEvent'
+
+    MedalTallyResponse:
+      type: object
+      properties:
+        rankingRule:
+          type: string
+          example: "Gold > Silver > Bronze > Total Points"
+        schools:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolMedalEntry'
+    
+    AthleteSearchResponse:
+      type: object
+      properties:
+        athletes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AthletePerformanceEntry'
+
+    # ─────────────────────────────────────────────────────────────────
+    # Detailed Objects
+    # ─────────────────────────────────────────────────────────────────
+    ScoreboardEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        eventType:
+          type: string
+          enum: [TRACK, FIELD]
+        category:
+          type: string
+        gender:
+          type: string
+        heatNumber:
+          type: [integer, 'null']
+        status:
+          type: string
+          enum: [SCHEDULED, ONGOING, COMPLETED]
+        liveResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreboardResultRow'
+
+    UpcomingEvent:
+       type: object
+       properties:
+         eventId:
+           type: string
+           format: uuid
+         name:
+           type: string
+         eventType:
+           type: string
+         startTime:
+           type: string
+         venue:
+           type: string
+         category:
+           type: string
+         gender:
+           type: string
+
+    ScoreboardResultRow:
+      type: object
+      properties:
+        athleteId:
+          type: string
+          format: uuid
+        bibNumber:
+           type: integer
+        athleteName:
+           type: string
+        resultValue:
+           type: [string, 'null']
+        status:
+           type: string
+        rank:
+           type: [integer, 'null']
+
+    SchoolMedalEntry:
+      type: object
+      properties:
+        schoolId:
+           type: string
+           format: uuid
+        schoolName:
+           type: string
+        gold:
+           type: integer
+        silver:
+           type: integer
+        bronze:
+           type: integer
+        totalPoints:
+           type: integer
+
+    AthletePerformanceEntry:
+      type: object
+      properties:
+        athleteId:
+           type: string
+           format: uuid
+        athleteName:
+           type: string
+        bibNumber:
+           type: integer
+        schoolName:
+           type: string
+        events:
+           type: array
+           items:
+              type: object
+              properties:
+                eventName:
+                  type: string
+                eventType:
+                  type: string
+                rank:
+                  type: [integer, 'null']
+                resultValue:
+                  type: [string, 'null']
+                status:
+                  type: string

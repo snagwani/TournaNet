@@ -28,6 +28,8 @@ tags:
     description: Schedule generation and conflict management
   - name: Results
     description: Scoring and result entry
+  - name: Scoreboard
+    description: Public live scoreboard and stats
 
 # Default security - can be overridden per operation
 security: []
@@ -45,6 +47,16 @@ paths:
     $ref: './components/schedule.yaml#/paths/~1schedule~1generate'
   /events/{eventId}/heats/{heatId}/results:
     $ref: './components/results.yaml#/paths/~1events~1{eventId}~1heats~1{heatId}~1results'
+  /scoreboard/current:
+    $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1current'
+  /scoreboard/upcoming:
+    $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1upcoming'
+  /scoreboard/results:
+    $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1results'
+  /scoreboard/medals:
+    $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1medals'
+  /scoreboard/athletes/search:
+    $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1athletes~1search'
 
 components:
   securitySchemes:
