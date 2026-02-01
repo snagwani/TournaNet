@@ -24,6 +24,8 @@ tags:
     description: Event configuration and scheduling
   - name: Heats
     description: Heat generation and management
+  - name: Schedule
+    description: Schedule generation and conflict management
 
 # Default security - can be overridden per operation
 security: []
@@ -37,6 +39,8 @@ paths:
     $ref: './components/events.yaml#/paths/~1events'
   /events/{eventId}/heats/generate:
     $ref: './components/heats.yaml#/paths/~1events~1{eventId}~1heats~1generate'
+  /schedule/generate:
+    $ref: './components/schedule.yaml#/paths/~1schedule~1generate'
 
 components:
   securitySchemes:

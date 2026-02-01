@@ -1,0 +1,156 @@
+# Schedule Generation Contract
+
+paths:
+  /schedule/generate:
+    post:
+      operationId: generateSchedule
+      summary: Generate a tournament schedule proposal
+      description: |
+        Generates a 2-day tournament schedule based on constraints.
+        **This is a read-only proposal** and does not modify event data.
+        
+        **Scheduling Rules:**
+        - **Tournament Duration**: 2 Days (08:00 - 17:00).
+        - **Lunch Break**: 13:00 - 14:00 (No events scheduled).
+        - **Track Events**: Sequential (no overlap). Respected gap (`trackGapMinutes`).
+        - **Field Events**: Parallel allowed.
+        - **Athlete Rest**: Minimum `athleteRestMinutes` between events for same athlete.
+      tags:
+        - Schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateScheduleRequest'
+      responses:
+        '201':
+          description: Schedule generated (with potential conflicts)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/ValidationError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Request Schema
+    # ─────────────────────────────────────────────────────────────────
+    GenerateScheduleRequest:
+      type: object
+      required:
+        - startDate
+        - days
+      properties:
+        startDate:
+          type: string
+          format: date
+          description: Start date of the tournament (Day 1)
+          example: "2026-05-20"
+        days:
+          type: integer
+          default: 2
+          description: Duration of tournament in days (Fixed to 2 for now)
+          example: 2
+        trackGapMinutes:
+          type: integer
+          default: 15
+          description: Setup/Transition time between Track events
+          minimum: 0
+        athleteRestMinutes:
+          type: integer
+          default: 60
+          description: Minimum rest time for an athlete between events
+          minimum: 0
+
+    # ─────────────────────────────────────────────────────────────────
+    # Response Schema
+    # ─────────────────────────────────────────────────────────────────
+    ScheduleResponse:
+      type: object
+      required:
+        - days
+      properties:
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleDay'
+    
+    ScheduleDay:
+      type: object
+      required:
+        - date
+        - events
+      properties:
+        date:
+          type: string
+          format: date
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduledEvent'
+
+    ScheduledEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - eventType
+        - startTime
+        - endTime
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        eventType:
+          type: string
+          enum: [TRACK, FIELD]
+        startTime:
+          type: string
+          description: HH:mm
+        endTime:
+          type: string
+          description: HH:mm
+        venue:
+          type: string
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleConflict'
+
+    ScheduleConflict:
+      type: object
+      required:
+        - type
+        - description
+      properties:
+        type:
+          type: string
+          enum: [ATHLETE_CONFLICT, REST_VIOLATION, RESOURCE_CONFLICT, LUNCH_VIOLATION, TIME_WINDOW_VIOLATION]
+        description:
+          type: string
+        affectedAthleteIds:
+          type: array
+          items:
+            type: string
+            format: uuid

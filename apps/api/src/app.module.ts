@@ -8,6 +8,7 @@ import { SchoolsModule } from './schools/schools.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { EventsModule } from './events/events.module';
 import { HeatsModule } from './heats/heats.module';
+import { ScheduleModule } from './schedule/schedule.module';
 
 @Module({
     imports: [
@@ -28,6 +29,7 @@ import { HeatsModule } from './heats/heats.module';
         AthletesModule,
         EventsModule,
         HeatsModule,
+        ScheduleModule,
     ],
 })
 export class AppModule { }
