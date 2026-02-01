@@ -5,6 +5,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { HealthModule } from './health/health.module';
 import { appConfig } from './config/app.config';
 import { SchoolsModule } from './schools/schools.module';
+import { AthletesModule } from './athletes/athletes.module';
 
 @Module({
     imports: [
@@ -22,6 +23,7 @@ import { SchoolsModule } from './schools/schools.module';
         // Feature modules
         HealthModule,
         SchoolsModule,
+        AthletesModule,
     ],
 })
 export class AppModule { }

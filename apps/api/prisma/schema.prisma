@@ -29,4 +29,33 @@ model School {
 
     @@unique([name, district])
     @@map("schools")
+    athletes Athlete[]
+}
+
+enum Gender {
+    MALE
+    FEMALE
+}
+
+enum AthleteCategory {
+    U14
+    U17
+    U19
+}
+
+model Athlete {
+    id           String          @id @default(uuid())
+    name         String          @db.VarChar(100)
+    age          Int
+    gender       Gender
+    category     AthleteCategory
+    personalBest String?
+    bibNumber    Int             @unique @default(autoincrement())
+    schoolId     String
+    school       School          @relation(fields: [schoolId], references: [id])
+    createdAt    DateTime        @default(now())
+    updatedAt    DateTime        @updatedAt
+
+    @@unique([name, age, schoolId])
+    @@map("athletes")
 }

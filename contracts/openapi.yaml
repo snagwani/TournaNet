@@ -18,6 +18,8 @@ servers:
 tags:
   - name: Schools
     description: School registration and management
+  - name: Athletes
+    description: Athlete registration and management
 
 # Default security - can be overridden per operation
 security: []
@@ -25,6 +27,8 @@ security: []
 paths:
   /schools:
     $ref: './components/schools.yaml#/paths/~1schools'
+  /athletes:
+    $ref: './components/athletes.yaml#/paths/~1athletes'
 
 components:
   securitySchemes:
