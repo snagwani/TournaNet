@@ -7,6 +7,7 @@ import { appConfig } from './config/app.config';
 import { SchoolsModule } from './schools/schools.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { EventsModule } from './events/events.module';
+import { HeatsModule } from './heats/heats.module';
 
 @Module({
     imports: [
@@ -26,6 +27,7 @@ import { EventsModule } from './events/events.module';
         SchoolsModule,
         AthletesModule,
         EventsModule,
+        HeatsModule,
     ],
 })
 export class AppModule { }

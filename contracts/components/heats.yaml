@@ -1,0 +1,143 @@
+# Heat Generation Contract
+
+paths:
+  /events/{eventId}/heats/generate:
+    post:
+      operationId: generateHeats
+      summary: Generate heats for a TRACK event
+      description: |
+        Automatically generates heats and assigns lanes for a generic TRACK event.
+        
+        **Business Rules:**
+        - **Event Type**: Must be TRACK.
+        - **Eligibility**: Only includes athletes matching the event's Gender and Category.
+        - **Seeding**: Athletes strictly seeded by Personal Best (PB) if `PB_ASC` selected. Athletes without PB are seeded last.
+        - **Heats**: Number of heats determined by total athletes / `maxAthletesPerHeat` (from event rules).
+        - **Idempotency**: Repeated calls return 409 Conflict if heats exist (unless force logic implemented later).
+      tags:
+        - Heats
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID of the TRACK event
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateHeatsRequest'
+      responses:
+        '201':
+          description: Heats generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeatsResponse'
+        '400':
+          description: Invalid event type (not TRACK) or missing rules
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '409':
+          description: Heats already generated for this event
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/Error'
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Request Schema
+    # ─────────────────────────────────────────────────────────────────
+    GenerateHeatsRequest:
+      type: object
+      properties:
+        seedingStrategy:
+          type: string
+          enum: [PB_ASC, RANDOM]
+          default: PB_ASC
+          description: |
+            Strategy for seeding athletes into heats.
+            - PB_ASC: Fastest PB first (Standard).
+            - RANDOM: Randomized assignment.
+        laneAssignment:
+          type: string
+          enum: [STANDARD]
+          default: STANDARD
+          description: |
+            Lane preference strategy.
+            - STANDARD: Center lanes (e.g. 4,5,3,6...) are filled first by top seeds.
+
+    # ─────────────────────────────────────────────────────────────────
+    # Response Schema
+    # ─────────────────────────────────────────────────────────────────
+    HeatsResponse:
+      type: object
+      required:
+        - eventId
+        - totalAthletes
+        - totalHeats
+        - heats
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        totalAthletes:
+          type: integer
+          description: Count of eligible athletes processed
+        totalHeats:
+          type: integer
+          description: Number of heats generated
+        heats:
+          type: array
+          items:
+            $ref: '#/components/schemas/Heat'
+
+    Heat:
+      type: object
+      required:
+        - heatNumber
+        - lanes
+      properties:
+        heatNumber:
+          type: integer
+          example: 1
+        lanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaneAssignment'
+
+    LaneAssignment:
+      type: object
+      required:
+        - laneNumber
+        - athleteId
+        - athleteName
+      properties:
+        laneNumber:
+          type: integer
+          example: 4
+        athleteId:
+          type: string
+          format: uuid
+        athleteName:
+          type: string
+        bibNumber:
+          type: integer
+        personalBest:
+          type:
+            - string
+            - 'null'

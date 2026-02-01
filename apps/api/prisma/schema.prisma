@@ -58,6 +58,7 @@ model Athlete {
 
     @@unique([name, age, schoolId])
     @@map("athletes")
+    heatLanes HeatLane[]
 }
 
 enum EventType {
@@ -80,4 +81,32 @@ model Event {
 
     @@unique([name, gender, category])
     @@map("events")
+    heats Heat[]
+}
+
+model Heat {
+    id         String     @id @default(uuid())
+    eventId    String
+    event      Event      @relation(fields: [eventId], references: [id])
+    heatNumber Int
+    lanes      HeatLane[]
+    createdAt  DateTime   @default(now())
+    updatedAt  DateTime   @updatedAt
+
+    @@unique([eventId, heatNumber])
+    @@map("heats")
+}
+
+model HeatLane {
+    id         String   @id @default(uuid())
+    heatId     String
+    heat       Heat     @relation(fields: [heatId], references: [id])
+    laneNumber Int
+    athleteId  String
+    athlete    Athlete  @relation(fields: [athleteId], references: [id])
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    @@unique([heatId, laneNumber])
+    @@map("heat_lanes")
 }
