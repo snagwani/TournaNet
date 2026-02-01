@@ -1,0 +1,230 @@
+# Admin Dashboard Contract
+
+paths:
+  /admin/overview:
+    get:
+      operationId: getSystemOverview
+      summary: Get high-level system overview
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: System statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemOverviewResponse'
+
+  /admin/reports/schools:
+    get:
+      operationId: getSchoolReports
+      summary: Get school participation reports
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: School performance reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolReportResponse'
+
+  /admin/reports/athletes:
+    get:
+      operationId: getAthleteReports
+      summary: Get athlete performance reports
+      tags:
+        - Admin
+      parameters:
+        - name: schoolId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: gender
+          in: query
+          schema:
+            type: string
+            enum: [MALE, FEMALE]
+      responses:
+        '200':
+          description: Athlete performance data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AthleteReportResponse'
+
+  /admin/reports/events:
+    get:
+      operationId: getEventReports
+      summary: Get event outcome reports
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Event results summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventReportResponse'
+
+  /admin/export:
+    get:
+      operationId: exportReport
+      summary: Export reports to file
+      tags:
+        - Admin
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [schools, athletes, medals, events]
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv, pdf]
+      responses:
+        '200':
+          description: File download URL or stream
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileUrl:
+                    type: string
+                    format: uri
+
+components:
+  schemas:
+    # ─────────────────────────────────────────────────────────────────
+    # Admin Schemas
+    # ─────────────────────────────────────────────────────────────────
+    SystemOverviewResponse:
+      type: object
+      properties:
+        totalSchools:
+          type: integer
+        totalAthletes:
+          type: integer
+        totalEvents:
+          type: integer
+        eventsCompleted:
+          type: integer
+        eventsRemaining:
+          type: integer
+        medalsDistributed:
+          type: integer
+        lastUpdated:
+          type: string
+          format: date-time
+
+    SchoolReportResponse:
+      type: object
+      properties:
+        schools:
+          type: array
+          items:
+            type: object
+            properties:
+              schoolId:
+                type: string
+                format: uuid
+              schoolName:
+                type: string
+              athletesCount:
+                type: integer
+              eventsParticipated:
+                type: integer
+              gold:
+                type: integer
+              silver:
+                type: integer
+              bronze:
+                type: integer
+              totalPoints:
+                type: integer
+
+    AthleteReportResponse:
+      type: object
+      properties:
+        athletes:
+          type: array
+          items:
+            type: object
+            properties:
+              athleteId:
+                type: string
+                format: uuid
+              athleteName:
+                type: string
+              bibNumber:
+                type: integer
+              schoolName:
+                type: string
+              events:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    eventName:
+                      type: string
+                    eventType:
+                      type: string
+                    rank:
+                      type: [integer, 'null']
+                    resultValue:
+                      type: [string, 'null']
+                    status:
+                      type: string
+
+    EventReportResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              eventId:
+                type: string
+                format: uuid
+              eventName:
+                type: string
+              category:
+                type: string
+              gender:
+                type: string
+              gold:
+                type: [object, 'null']
+                properties:
+                    athleteName: 
+                        type: string
+                    schoolName:
+                        type: string 
+              silver:
+                type: [object, 'null']
+                properties:
+                    athleteName: 
+                        type: string
+                    schoolName:
+                        type: string
+              bronze:
+                type: [object, 'null']
+                properties:
+                    athleteName: 
+                        type: string
+                    schoolName:
+                        type: string
+              results:
+                 type: array
+                 items:
+                    $ref: '../components/results.yaml#/components/schemas/ResultEntry'

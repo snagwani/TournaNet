@@ -30,6 +30,8 @@ tags:
     description: Scoring and result entry
   - name: Scoreboard
     description: Public live scoreboard and stats
+  - name: Admin
+    description: Admin dashboard and reports
 
 # Default security - can be overridden per operation
 security: []
@@ -57,6 +59,16 @@ paths:
     $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1medals'
   /scoreboard/athletes/search:
     $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1athletes~1search'
+  /admin/overview:
+    $ref: './components/admin.yaml#/paths/~1admin~1overview'
+  /admin/reports/schools:
+    $ref: './components/admin.yaml#/paths/~1admin~1reports~1schools'
+  /admin/reports/athletes:
+    $ref: './components/admin.yaml#/paths/~1admin~1reports~1athletes'
+  /admin/reports/events:
+    $ref: './components/admin.yaml#/paths/~1admin~1reports~1events'
+  /admin/export:
+    $ref: './components/admin.yaml#/paths/~1admin~1export'
 
 components:
   securitySchemes:
