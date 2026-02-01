@@ -11,6 +11,7 @@ import { HeatsModule } from './heats/heats.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { ResultsModule } from './results/results.module';
 import { ScoreboardModule } from './scoreboard/scoreboard.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
     imports: [
@@ -34,6 +35,7 @@ import { ScoreboardModule } from './scoreboard/scoreboard.module';
         ScheduleModule,
         ResultsModule,
         ScoreboardModule,
+        AdminModule,
     ],
 })
 export class AppModule { }

@@ -1,0 +1,221 @@
+import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { AthleteReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
+import { AthleteCategory, Gender, ResultStatus, Prisma } from '@prisma/client';
+
+@Injectable()
+export class AdminService {
+    private readonly logger = new Logger(AdminService.name);
+
+    constructor(private readonly prisma: PrismaService) { }
+
+    async getSystemOverview() {
+        const [totalSchools, totalAthletes, totalEvents, completedEvents] = await Promise.all([
+            this.prisma.school.count(),
+            this.prisma.athlete.count(),
+            this.prisma.event.count(),
+            this.prisma.event.count({
+                where: {
+                    heats: {
+                        some: {
+                            results: {
+                                some: {} // Has at least one result
+                            }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        const eventsRemaining = totalEvents - completedEvents;
+
+        // Medal count: Ranks 1, 2, 3
+        const medalsDistributed = await this.prisma.result.count({
+            where: {
+                rank: { in: [1, 2, 3] },
+                status: ResultStatus.FINISHED
+            }
+        });
+
+        return {
+            totalSchools,
+            totalAthletes,
+            totalEvents,
+            eventsCompleted: completedEvents,
+            eventsRemaining: Math.max(0, eventsRemaining),
+            medalsDistributed,
+            lastUpdated: new Date().toISOString()
+        };
+    }
+
+    async getSchoolReports() {
+        // Fetch stats via deep aggregation
+        const schoolsWithData = await this.prisma.school.findMany({
+            include: {
+                athletes: {
+                    include: {
+                        results: {
+                            select: {
+                                rank: true,
+                                status: true,
+                                heat: {
+                                    select: {
+                                        eventId: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const mapped = schoolsWithData.map(s => {
+            let gold = 0, silver = 0, bronze = 0, points = 0;
+            const eventIds = new Set<string>();
+
+            s.athletes.forEach(a => {
+                a.results.forEach(r => {
+                    // eventId is available via heat.eventId because it's selected above
+                    if (r.heat) {
+                        eventIds.add(r.heat.eventId);
+                    }
+                    if (r.status === ResultStatus.FINISHED) {
+                        if (r.rank === 1) { gold++; points += 10; }
+                        else if (r.rank === 2) { silver++; points += 8; }
+                        else if (r.rank === 3) { bronze++; points += 6; }
+                    }
+                });
+            });
+
+            return {
+                schoolId: s.id,
+                schoolName: s.name,
+                athletesCount: s.athletes.length,
+                eventsParticipated: eventIds.size,
+                gold,
+                silver,
+                bronze,
+                totalPoints: points
+            };
+        });
+
+        return {
+            schools: mapped.sort((a, b) => {
+                if (b.gold !== a.gold) return b.gold - a.gold;
+                if (b.silver !== a.silver) return b.silver - a.silver;
+                if (b.bronze !== a.bronze) return b.bronze - a.bronze;
+                return b.totalPoints - a.totalPoints;
+            })
+        };
+    }
+
+    async getAthleteReports(query: AthleteReportQueryDto) {
+        const where: Prisma.AthleteWhereInput = {};
+        if (query.schoolId) where.schoolId = query.schoolId;
+        if (query.category) where.category = query.category as AthleteCategory;
+        if (query.gender) where.gender = query.gender;
+
+        const athletes = await this.prisma.athlete.findMany({
+            where,
+            include: {
+                school: true,
+                results: {
+                    include: {
+                        heat: {
+                            include: {
+                                event: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
+            }
+        });
+
+        return {
+            athletes: athletes.map(a => ({
+                athleteId: a.id,
+                athleteName: a.name,
+                bibNumber: a.bibNumber,
+                schoolName: a.school.name,
+                events: a.results.map(r => ({
+                    eventName: r.heat.event.name,
+                    eventType: r.heat.event.eventType,
+                    rank: r.rank,
+                    resultValue: r.resultValue,
+                    status: r.status
+                }))
+            }))
+        };
+    }
+
+    async getEventReports() {
+        const events = await this.prisma.event.findMany({
+            include: {
+                heats: {
+                    include: {
+                        results: {
+                            include: {
+                                athlete: {
+                                    include: {
+                                        school: true
+                                    }
+                                }
+                            },
+                            orderBy: {
+                                rank: 'asc'
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: [
+                { date: 'asc' },
+                { startTime: 'asc' }
+            ]
+        });
+
+        return {
+            events: events.map(e => {
+                // Combine all results from all heats
+                const allResults = e.heats.flatMap(h => h.results);
+
+                // Sort by rank, then filter finished for medalists
+                const sorted = [...allResults].sort((a, b) => (a.rank || 999) - (b.rank || 999));
+
+                const getMedalist = (r: number) => {
+                    const match = sorted.find(res => res.rank === r && res.status === ResultStatus.FINISHED);
+                    return match ? {
+                        athleteName: match.athlete.name,
+                        schoolName: match.athlete.school.name
+                    } : null;
+                };
+
+                return {
+                    eventId: e.id,
+                    eventName: e.name,
+                    category: e.category,
+                    gender: e.gender,
+                    gold: getMedalist(1),
+                    silver: getMedalist(2),
+                    bronze: getMedalist(3),
+                    results: sorted.map(r => ({
+                        athleteId: r.athleteId,
+                        bibNumber: r.bibNumber,
+                        status: r.status,
+                        resultValue: r.resultValue,
+                        rank: r.rank,
+                        notes: r.notes
+                    }))
+                };
+            })
+        };
+    }
+
+    async exportReport(query: ExportQueryDto) {
+        throw new NotImplementedException(`Export for ${query.type} in ${query.format} is not yet implemented.`);
+    }
+}
