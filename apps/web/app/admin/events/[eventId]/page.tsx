@@ -188,44 +188,69 @@ export default function EventDetailPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    event.results.map((result) => (
-                                        <tr key={result.athleteId} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors group">
-                                            <td className="px-6 py-5">
-                                                <span className={`text-sm font-black italic ${result.rank === 1 ? 'text-amber-400' :
-                                                    result.rank === 2 ? 'text-neutral-300' :
-                                                        result.rank === 3 ? 'text-amber-700' : 'text-neutral-600'
-                                                    }`}>
-                                                    {result.rank ? `#${result.rank.toString().padStart(2, '0')}` : '--'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <div className="space-y-0.5">
-                                                    <p className="text-white font-bold uppercase tracking-tight group-hover:text-blue-400 transition-colors">
-                                                        {result.athleteName}
-                                                    </p>
-                                                    <p className="text-neutral-500 font-mono text-[9px] uppercase tracking-wider">
-                                                        {result.schoolName}
-                                                    </p>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <span className="text-white font-mono text-xs font-bold bg-neutral-800/50 px-3 py-1 rounded-full border border-neutral-700/50">
-                                                    {result.status === 'FINISHED' ? (result.resultValue || '---') : '---'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border ${result.status === 'FINISHED' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                                    result.status === 'DNS' ? 'bg-neutral-500/10 border-neutral-500/20 text-neutral-500' :
-                                                        'bg-red-500/10 border-red-500/20 text-red-400'
-                                                    }`}>
-                                                    {result.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5 text-right font-mono text-[10px] text-neutral-600">
-                                                {result.bibNumber.toString().padStart(3, '0')}
-                                            </td>
-                                        </tr>
-                                    ))
+                                    event.results.map((result) => {
+                                        const isPodium = result.rank && result.rank <= 3;
+                                        return (
+                                            <tr
+                                                key={result.athleteId}
+                                                className={`border-b border-neutral-800/50 transition-all group ${result.rank === 1 ? 'bg-amber-500/[0.03] hover:bg-amber-500/[0.05]' :
+                                                        result.rank === 2 ? 'bg-neutral-400/[0.02] hover:bg-neutral-400/[0.04]' :
+                                                            result.rank === 3 ? 'bg-amber-800/[0.02] hover:bg-amber-800/[0.04]' :
+                                                                'hover:bg-white/[0.02]'
+                                                    }`}
+                                            >
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-3">
+                                                        {result.rank === 1 && (
+                                                            <span className="text-xl" title="Gold Medal">🥇</span>
+                                                        )}
+                                                        {result.rank === 2 && (
+                                                            <span className="text-xl" title="Silver Medal">🥈</span>
+                                                        )}
+                                                        {result.rank === 3 && (
+                                                            <span className="text-xl" title="Bronze Medal">🥉</span>
+                                                        )}
+                                                        <span className={`text-sm font-black italic ${result.rank === 1 ? 'text-amber-400' :
+                                                                result.rank === 2 ? 'text-neutral-300' :
+                                                                    result.rank === 3 ? 'text-amber-700' : 'text-neutral-600'
+                                                            }`}>
+                                                            {result.rank ? `#${result.rank.toString().padStart(2, '0')}` : '--'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="space-y-0.5">
+                                                        <p className={`font-bold uppercase tracking-tight transition-colors ${isPodium ? 'text-white' : 'text-neutral-300'
+                                                            } group-hover:text-blue-400`}>
+                                                            {result.athleteName}
+                                                        </p>
+                                                        <p className="text-neutral-500 font-mono text-[9px] uppercase tracking-wider">
+                                                            {result.schoolName}
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className={`font-mono text-xs font-bold px-3 py-1 rounded-full border ${isPodium
+                                                            ? 'bg-neutral-800 text-white border-neutral-700'
+                                                            : 'bg-neutral-900/50 text-neutral-500 border-neutral-800/50'
+                                                        }`}>
+                                                        {result.status === 'FINISHED' ? (result.resultValue || '---') : '---'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className={`text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded border ${result.status === 'FINISHED' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                                            result.status === 'DNS' ? 'bg-neutral-500/10 border-neutral-500/20 text-neutral-500' :
+                                                                'bg-red-500/10 border-red-500/20 text-red-400'
+                                                        }`}>
+                                                        {result.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right font-mono text-[10px] text-neutral-600">
+                                                    {result.bibNumber.toString().padStart(3, '0')}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
