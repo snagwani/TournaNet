@@ -29,12 +29,28 @@ export default function EventReportsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { user } = useAuth();
+    const [filters, setFilters] = useState({
+        eventType: '',
+        category: '',
+        gender: ''
+    });
+    const [sort, setSort] = useState({
+        sortBy: 'date',
+        sortOrder: 'asc'
+    });
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('http://localhost:3001/api/admin/reports/events', {
+            const params = new URLSearchParams();
+            if (filters.eventType) params.append('eventType', filters.eventType);
+            if (filters.category) params.append('category', filters.category);
+            if (filters.gender) params.append('gender', filters.gender);
+            params.append('sortBy', sort.sortBy);
+            params.append('sortOrder', sort.sortOrder);
+
+            const response = await fetch(`http://localhost:3001/api/admin/reports/events?${params.toString()}`, {
                 credentials: 'include'
             });
 
@@ -50,13 +66,26 @@ export default function EventReportsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [filters, sort]);
 
     useEffect(() => {
         if (user) {
             fetchEvents();
         }
     }, [user, fetchEvents]);
+
+    const clearFilters = () => {
+        setFilters({ eventType: '', category: '', gender: '' });
+        setSort({ sortBy: 'date', sortOrder: 'asc' });
+    };
+
+    const toggleSort = (field: 'name' | 'date') => {
+        if (sort.sortBy === field) {
+            setSort({ ...sort, sortOrder: sort.sortOrder === 'asc' ? 'desc' : 'asc' });
+        } else {
+            setSort({ sortBy: field, sortOrder: 'asc' });
+        }
+    };
 
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
@@ -83,12 +112,85 @@ export default function EventReportsPage() {
                     )}
                 </header>
 
+                {/* Filters Section */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest ml-1">Event Type</label>
+                        <select
+                            value={filters.eventType}
+                            onChange={(e) => setFilters({ ...filters, eventType: e.target.value })}
+                            className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 outline-none transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">All Types</option>
+                            <option value="TRACK">Track</option>
+                            <option value="FIELD">Field</option>
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest ml-1">Category</label>
+                        <select
+                            value={filters.category}
+                            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                            className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 outline-none transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">All Categories</option>
+                            <option value="U14">U14</option>
+                            <option value="U17">U17</option>
+                            <option value="U19">U19</option>
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest ml-1">Gender</label>
+                        <select
+                            value={filters.gender}
+                            onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
+                            className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 outline-none transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="">All Genders</option>
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end">
+                        <button
+                            onClick={clearFilters}
+                            className="w-full h-[46px] bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-neutral-700/50 hover:border-neutral-600 shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+
                 <section className="bg-neutral-900/30 border border-neutral-800 rounded-[2rem] overflow-hidden shadow-2xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-neutral-900/50 border-b border-neutral-800">
-                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500">Event Info</th>
+                                    <th
+                                        onClick={() => toggleSort('name')}
+                                        className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 cursor-pointer hover:text-white transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Event Info
+                                            <span className={`text-[10px] ${sort.sortBy === 'name' ? 'text-blue-400' : 'text-neutral-700 opacity-0 group-hover:opacity-100'}`}>
+                                                {sort.sortBy === 'name' && sort.sortOrder === 'desc' ? '▼' : '▲'}
+                                            </span>
+                                        </div>
+                                    </th>
+                                    <th
+                                        onClick={() => toggleSort('date')}
+                                        className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 cursor-pointer hover:text-white transition-colors group text-center"
+                                    >
+                                        <div className="flex items-center justify-center gap-2">
+                                            Date
+                                            <span className={`text-[10px] ${sort.sortBy === 'date' ? 'text-blue-400' : 'text-neutral-700 opacity-0 group-hover:opacity-100'}`}>
+                                                {sort.sortBy === 'date' && sort.sortOrder === 'desc' ? '▼' : '▲'}
+                                            </span>
+                                        </div>
+                                    </th>
                                     <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Category/Gender</th>
                                     <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500">Medal Summary</th>
                                     <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-right">Status</th>
@@ -103,6 +205,9 @@ export default function EventReportsPage() {
                                                     <div className="h-5 w-48 bg-neutral-800 animate-pulse rounded-full" />
                                                     <div className="h-3 w-20 bg-neutral-900 animate-pulse rounded-full" />
                                                 </div>
+                                            </td>
+                                            <td className="px-6 py-8">
+                                                <div className="h-5 w-24 bg-neutral-800 animate-pulse rounded-full mx-auto" />
                                             </td>
                                             <td className="px-6 py-8">
                                                 <div className="flex justify-center gap-2">
@@ -124,7 +229,7 @@ export default function EventReportsPage() {
                                     ))
                                 ) : events.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-24 text-center">
+                                        <td colSpan={5} className="px-6 py-24 text-center">
                                             <div className="flex flex-col items-center space-y-4">
                                                 <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-3xl flex items-center justify-center">
                                                     <svg className="w-8 h-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,10 +255,15 @@ export default function EventReportsPage() {
                                                     <span className="text-lg font-black text-white group-hover:text-blue-400 transition-colors uppercase italic tracking-tighter block">
                                                         {event.eventName}
                                                     </span>
-                                                    <span className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.2em]">
-                                                        {event.eventType} • {new Date(event.date).toLocaleDateString()}
+                                                    <span className="px-2 py-0.5 bg-neutral-800 text-neutral-400 rounded text-[9px] font-black font-mono">
+                                                        {event.eventType}
                                                     </span>
                                                 </div>
+                                            </td>
+                                            <td className="px-6 py-8 text-center">
+                                                <span className="text-neutral-400 font-mono text-[11px] font-bold">
+                                                    {new Date(event.date).toLocaleDateString()}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-8 text-center">
                                                 <div className="flex items-center justify-center gap-2">

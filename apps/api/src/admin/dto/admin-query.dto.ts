@@ -23,3 +23,27 @@ export class ExportQueryDto {
     @IsEnum(['csv', 'pdf'])
     format: string;
 }
+
+export class EventReportQueryDto {
+    @IsOptional()
+    @IsEnum(['TRACK', 'FIELD'])
+    eventType?: 'TRACK' | 'FIELD';
+
+    @IsOptional()
+    @IsString()
+    category?: string;
+
+    @IsOptional()
+    @IsEnum(['MALE', 'FEMALE'])
+    gender?: 'MALE' | 'FEMALE';
+
+    @IsOptional()
+    @IsString()
+    @IsEnum(['name', 'date'])
+    sortBy?: 'name' | 'date';
+
+    @IsOptional()
+    @IsString()
+    @IsEnum(['asc', 'desc'])
+    sortOrder?: 'asc' | 'desc';
+}

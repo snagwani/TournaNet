@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { AthleteReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
+import { AthleteReportQueryDto, EventReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
 import { AthleteCategory, Gender, ResultStatus, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -202,8 +202,28 @@ export class AdminService {
         };
     }
 
-    async getEventReports() {
+    async getEventReports(query: EventReportQueryDto) {
+        const { eventType, category, gender, sortBy, sortOrder } = query;
+
+        const where: Prisma.EventWhereInput = {
+            eventType: eventType || undefined,
+            category: category as any || undefined,
+            gender: gender as any || undefined,
+        };
+
+        const orderBy: any[] = [];
+        if (sortBy === 'name') {
+            orderBy.push({ name: sortOrder || 'asc' });
+        } else if (sortBy === 'date') {
+            orderBy.push({ date: sortOrder || 'asc' });
+            orderBy.push({ startTime: sortOrder || 'asc' });
+        } else {
+            orderBy.push({ date: 'asc' });
+            orderBy.push({ startTime: 'asc' });
+        }
+
         const events = await this.prisma.event.findMany({
+            where,
             include: {
                 heats: {
                     include: {
@@ -222,10 +242,7 @@ export class AdminService {
                     }
                 }
             },
-            orderBy: [
-                { date: 'asc' },
-                { startTime: 'asc' }
-            ]
+            orderBy
         });
 
         return {
