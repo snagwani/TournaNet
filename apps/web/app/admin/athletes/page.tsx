@@ -20,6 +20,21 @@ interface SchoolOption {
     name: string;
 }
 
+const MOCK_ATHLETES: AthletePerformance[] = [
+    { athleteId: '1', athleteName: 'John Doe', bibNumber: 101, schoolName: 'Greenwood High', category: 'U17', gender: 'MALE', eventsCount: 3 },
+    { athleteId: '2', athleteName: 'Jane Smith', bibNumber: 102, schoolName: 'Riverside Academy', category: 'U14', gender: 'FEMALE', eventsCount: 2 },
+    { athleteId: '3', athleteName: 'Michael Brown', bibNumber: 103, schoolName: 'St. Peter\'s School', category: 'U19', gender: 'MALE', eventsCount: 4 },
+    { athleteId: '4', athleteName: 'Sarah Wilson', bibNumber: 104, schoolName: 'Greenwood High', category: 'U17', gender: 'FEMALE', eventsCount: 1 },
+    { athleteId: '5', athleteName: 'David Lee', bibNumber: 105, schoolName: 'Oakwood International', category: 'U14', gender: 'MALE', eventsCount: 2 },
+];
+
+const MOCK_SCHOOLS: SchoolOption[] = [
+    { id: '1', name: 'Greenwood High' },
+    { id: '2', name: 'Riverside Academy' },
+    { id: '3', name: 'St. Peter\'s School' },
+    { id: '4', name: 'Oakwood International' },
+];
+
 export default function AthletesReportPage() {
     const [athletes, setAthletes] = useState<AthletePerformance[]>([]);
     const [schoolsList, setSchoolsList] = useState<SchoolOption[]>([]);
@@ -31,64 +46,28 @@ export default function AthletesReportPage() {
         gender: ''
     });
 
-    const { accessToken } = useAuth();
     const router = useRouter();
 
-    const fetchSchools = useCallback(async () => {
-        if (!accessToken) return;
-        try {
-            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                credentials: 'include'
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setSchoolsList((data.schools || []).map((s: any) => ({ id: s.schoolId, name: s.schoolName })));
-            }
-        } catch (err) {
-            console.error('Failed to fetch schools list', err);
-        }
-    }, [accessToken]);
-
-    const fetchAthletes = useCallback(async () => {
-        if (!accessToken) return;
-
-        setIsLoading(true);
-        setError(null);
-        try {
-            const params = new URLSearchParams();
-            if (filters.schoolId) params.append('schoolId', filters.schoolId);
-            if (filters.category) params.append('category', filters.category);
-            if (filters.gender) params.append('gender', filters.gender);
-
-            const response = await fetch(`http://localhost:3001/api/admin/reports/athletes?${params.toString()}`, {
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || 'Failed to fetch athlete reports');
-            }
-
-            const data = await response.json();
-            setAthletes(data.athletes || []);
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
-        } finally {
+    useEffect(() => {
+        // Simulate loading
+        const timer = setTimeout(() => {
+            setAthletes(MOCK_ATHLETES);
+            setSchoolsList(MOCK_SCHOOLS);
             setIsLoading(false);
-        }
-    }, [accessToken, filters]);
-
-    useEffect(() => {
-        fetchSchools();
-    }, [fetchSchools]);
-
-    useEffect(() => {
-        fetchAthletes();
-    }, [fetchAthletes]);
+        }, 1200);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
+
+    const filteredAthletes = athletes.filter(a => {
+        const schoolMatch = !filters.schoolId || a.schoolName === MOCK_SCHOOLS.find(s => s.id === filters.schoolId)?.name;
+        const categoryMatch = !filters.category || a.category === filters.category;
+        const genderMatch = !filters.gender || a.gender === filters.gender;
+        return schoolMatch && categoryMatch && genderMatch;
+    });
 
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
@@ -96,23 +75,11 @@ export default function AthletesReportPage() {
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-6 gap-4">
                     <div className="space-y-1">
                         <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">
-                            Athlete Performance Report
+                            Athlete Reports
                         </h1>
                         <p className="text-neutral-500 text-sm font-mono uppercase tracking-widest">
                             Tournament Analytics • Athlete Statistics
                         </p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => fetchAthletes()}
-                            disabled={isLoading}
-                            className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-[10px] font-bold text-neutral-400 uppercase tracking-widest hover:text-white hover:border-neutral-700 transition-all disabled:opacity-50 flex items-center gap-2"
-                        >
-                            <svg className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Refresh Data
-                        </button>
                     </div>
                 </header>
 
@@ -157,23 +124,6 @@ export default function AthletesReportPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                        <div className="flex items-center gap-3">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="font-medium">{error}</span>
-                        </div>
-                        <button
-                            onClick={() => fetchAthletes()}
-                            className="text-[10px] uppercase tracking-widest underline decoration-2 underline-offset-4 font-bold"
-                        >
-                            Try Again
-                        </button>
-                    </div>
-                )}
-
                 <section className="bg-neutral-900/30 border border-neutral-800 rounded-[2rem] overflow-hidden shadow-2xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -211,7 +161,7 @@ export default function AthletesReportPage() {
                                             </td>
                                         </tr>
                                     ))
-                                ) : athletes.length === 0 ? (
+                                ) : filteredAthletes.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-24 text-center">
                                             <div className="flex flex-col items-center space-y-4">
@@ -221,16 +171,16 @@ export default function AthletesReportPage() {
                                                     </svg>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <p className="text-white font-bold text-lg">No Athlete Data Available</p>
+                                                    <p className="text-white font-bold text-lg">No Matching Athletes</p>
                                                     <p className="text-neutral-500 text-sm max-w-xs mx-auto">
-                                                        The athlete report will be populated once registrations are processed.
+                                                        No athletes found with the current filter criteria.
                                                     </p>
                                                 </div>
                                             </div>
                                         </td>
                                     </tr>
                                 ) : (
-                                    athletes.map((athlete) => (
+                                    filteredAthletes.map((athlete) => (
                                         <tr
                                             key={athlete.athleteId}
                                             onClick={() => router.push(`/admin/athletes/${athlete.athleteId}`)}
