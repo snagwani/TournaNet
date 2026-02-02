@@ -40,6 +40,13 @@ export class AdminController {
         return this.adminService.getEventReports();
     }
 
+    @Get('reports/events/:id')
+    async getEventDetail(@Param('id') id: string) {
+        const detail = await this.adminService.getEventDetail(id);
+        if (!detail) throw new NotFoundException('Event not found');
+        return detail;
+    }
+
     @Get('export')
     @UsePipes(new ValidationPipe({ transform: true }))
     async exportReport(@Query() query: ExportQueryDto) {

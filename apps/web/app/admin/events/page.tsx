@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import RequireAuth from '../../../components/RequireAuth';
 import { useAuth } from '../../../app/context/AuthContext';
 
@@ -23,6 +24,7 @@ interface EventReport {
 }
 
 export default function EventReportsPage() {
+    const router = useRouter();
     const [events, setEvents] = useState<EventReport[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -138,7 +140,11 @@ export default function EventReportsPage() {
                                     </tr>
                                 ) : (
                                     events.map((event) => (
-                                        <tr key={event.eventId} className="border-b border-neutral-800/50 hover:bg-white/[0.04] transition-all group">
+                                        <tr
+                                            key={event.eventId}
+                                            onClick={() => router.push(`/admin/events/${event.eventId}`)}
+                                            className="border-b border-neutral-800/50 hover:bg-white/[0.04] transition-all group cursor-pointer"
+                                        >
                                             <td className="px-6 py-8">
                                                 <div className="space-y-1">
                                                     <span className="text-lg font-black text-white group-hover:text-blue-400 transition-colors uppercase italic tracking-tighter block">

@@ -229,43 +229,73 @@ export class AdminService {
         });
 
         return {
-            events: events.map(e => {
-                // Combine all results from all heats
-                const allResults = e.heats.flatMap(h => h.results);
+            events: events.map(e => this.formatEventReport(e))
+        };
+    }
 
-                // Sort by rank, then filter finished for medalists
-                const sorted = [...allResults].sort((a, b) => (a.rank || 999) - (b.rank || 999));
+    async getEventDetail(id: string) {
+        const event = await this.prisma.event.findUnique({
+            where: { id },
+            include: {
+                heats: {
+                    include: {
+                        results: {
+                            include: {
+                                athlete: {
+                                    include: {
+                                        school: true
+                                    }
+                                }
+                            },
+                            orderBy: {
+                                rank: 'asc'
+                            }
+                        }
+                    }
+                }
+            }
+        });
 
-                const getMedalist = (r: number) => {
-                    const match = sorted.find(res => res.rank === r && res.status === ResultStatus.FINISHED);
-                    return match ? {
-                        athleteName: match.athlete.name,
-                        schoolName: match.athlete.school.name
-                    } : null;
-                };
+        if (!event) return null;
 
-                return {
-                    eventId: e.id,
-                    eventName: e.name,
-                    eventType: e.eventType,
-                    category: e.category,
-                    gender: e.gender,
-                    date: e.date,
-                    gold: getMedalist(1),
-                    silver: getMedalist(2),
-                    bronze: getMedalist(3),
-                    results: sorted.map(r => ({
-                        athleteId: r.athleteId,
-                        athleteName: r.athlete.name,
-                        schoolName: r.athlete.school.name,
-                        bibNumber: r.bibNumber,
-                        status: r.status,
-                        resultValue: r.resultValue,
-                        rank: r.rank,
-                        notes: r.notes
-                    }))
-                };
-            })
+        return this.formatEventReport(event);
+    }
+
+    private formatEventReport(e: any) {
+        // Combine all results from all heats
+        const allResults = e.heats.flatMap((h: any) => h.results);
+
+        // Sort by rank, then filter finished for medalists
+        const sorted = [...allResults].sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+
+        const getMedalist = (r: number) => {
+            const match = sorted.find((res: any) => res.rank === r && res.status === ResultStatus.FINISHED);
+            return match ? {
+                athleteName: match.athlete.name,
+                schoolName: match.athlete.school.name
+            } : null;
+        };
+
+        return {
+            eventId: e.id,
+            eventName: e.name,
+            eventType: e.eventType,
+            category: e.category,
+            gender: e.gender,
+            date: e.date,
+            gold: getMedalist(1),
+            silver: getMedalist(2),
+            bronze: getMedalist(3),
+            results: sorted.map((r: any) => ({
+                athleteId: r.athleteId,
+                athleteName: r.athlete.name,
+                schoolName: r.athlete.school.name,
+                bibNumber: r.bibNumber,
+                status: r.status,
+                resultValue: r.resultValue,
+                rank: r.rank,
+                notes: r.notes
+            }))
         };
     }
 
