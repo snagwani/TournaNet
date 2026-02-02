@@ -247,8 +247,10 @@ export class AdminService {
                 return {
                     eventId: e.id,
                     eventName: e.name,
+                    eventType: e.eventType,
                     category: e.category,
                     gender: e.gender,
+                    date: e.date,
                     gold: getMedalist(1),
                     silver: getMedalist(2),
                     bronze: getMedalist(3),

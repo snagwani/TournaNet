@@ -24,8 +24,10 @@ interface EventResult {
 interface EventReport {
     eventId: string;
     eventName: string;
+    eventType: 'TRACK' | 'FIELD';
     category: string;
     gender: string;
+    date: string;
     gold: Medalist | null;
     silver: Medalist | null;
     bronze: Medalist | null;
@@ -39,6 +41,14 @@ export default function EventsReportPage() {
     const [error, setError] = useState<string | null>(null);
     const { accessToken } = useAuth();
     const router = useRouter();
+
+    // Filter & Sort State
+    const [filters, setFilters] = useState({
+        type: 'ALL',
+        category: 'ALL',
+        gender: 'ALL'
+    });
+    const [sortBy, setSortBy] = useState<'name' | 'date'>('name');
 
     const fetchEvents = useCallback(async () => {
         if (!accessToken) return;
@@ -70,11 +80,24 @@ export default function EventsReportPage() {
         fetchEvents();
     }, [fetchEvents]);
 
+    const filteredEvents = events.filter(e => {
+        const typeMatch = filters.type === 'ALL' || e.eventType === filters.type;
+        const categoryMatch = filters.category === 'ALL' || e.category === filters.category;
+        const genderMatch = filters.gender === 'ALL' || e.gender === filters.gender;
+        return typeMatch && categoryMatch && genderMatch;
+    }).sort((a, b) => {
+        if (sortBy === 'name') {
+            return a.eventName.localeCompare(b.eventName);
+        } else {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        }
+    });
+
     const selectedEvent = events.find(e => e.eventId === selectedEventId);
 
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
-            <div className="flex min-h-screen bg-neutral-950">
+            <div className="flex min-h-screen bg-neutral-950 text-neutral-200">
                 <main className={`flex-1 p-8 space-y-8 transition-all duration-500 ${selectedEventId ? 'mr-[450px]' : ''}`}>
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-6 gap-4">
                         <div className="space-y-1">
@@ -98,6 +121,83 @@ export default function EventsReportPage() {
                             </button>
                         </div>
                     </header>
+
+                    {/* Filters & Sorting */}
+                    <div className="flex flex-wrap items-center gap-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1">Event Type</p>
+                            <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800">
+                                {['ALL', 'TRACK', 'FIELD'].map(t => (
+                                    <button
+                                        key={t}
+                                        onClick={() => setFilters(prev => ({ ...prev, type: t }))}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filters.type === t ? 'bg-neutral-800 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'
+                                            }`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1">Gender</p>
+                            <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800">
+                                {['ALL', 'MALE', 'FEMALE'].map(g => (
+                                    <button
+                                        key={g}
+                                        onClick={() => setFilters(prev => ({ ...prev, gender: g }))}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filters.gender === g ? 'bg-neutral-800 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'
+                                            }`}
+                                    >
+                                        {g === 'ALL' ? 'ALL' : g}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1">Category</p>
+                            <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800">
+                                {['ALL', 'U14', 'U17', 'U19'].map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setFilters(prev => ({ ...prev, category: c }))}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filters.category === c ? 'bg-neutral-800 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'
+                                            }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="ml-auto space-y-2">
+                            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1">Sort By</p>
+                            <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800">
+                                <button
+                                    onClick={() => setSortBy('name')}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${sortBy === 'name' ? 'bg-neutral-800 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'
+                                        }`}
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                    </svg>
+                                    Name
+                                </button>
+                                <button
+                                    onClick={() => setSortBy('date')}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${sortBy === 'date' ? 'bg-neutral-800 text-white shadow-xl' : 'text-neutral-500 hover:text-neutral-300'
+                                        }`}
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Date
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
@@ -161,7 +261,7 @@ export default function EventsReportPage() {
                                                 ))}
                                             </tr>
                                         ))
-                                    ) : events.length === 0 ? (
+                                    ) : filteredEvents.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-24 text-center">
                                                 <div className="flex flex-col items-center space-y-4">
@@ -170,14 +270,25 @@ export default function EventsReportPage() {
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
                                                         </svg>
                                                     </div>
-                                                    <p className="text-white font-bold text-lg">No Event Results Yet</p>
+                                                    <p className="text-white font-bold text-lg">No Matching Events</p>
+                                                    <button
+                                                        onClick={() => setFilters({ type: 'ALL', category: 'ALL', gender: 'ALL' })}
+                                                        className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest hover:text-indigo-300 transition-colors"
+                                                    >
+                                                        Clear All Filters
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
                                     ) : (
-                                        events.map((event) => {
+                                        filteredEvents.map((event) => {
                                             const isCompleted = !!event.gold;
                                             const isSelected = selectedEventId === event.eventId;
+                                            const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric'
+                                            });
+
                                             return (
                                                 <tr
                                                     key={event.eventId}
@@ -186,9 +297,12 @@ export default function EventsReportPage() {
                                                 >
                                                     <td className="px-6 py-6 text-left">
                                                         <div className="flex flex-col">
-                                                            <span className="text-white font-bold group-hover:text-white transition-colors capitalize">
-                                                                {event.eventName}
-                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-white font-black group-hover:text-white transition-colors capitalize">
+                                                                    {event.eventName}
+                                                                </span>
+                                                                <span className="text-[10px] text-neutral-600 font-mono font-bold">{formattedDate}</span>
+                                                            </div>
                                                             <div className="flex items-center gap-2 mt-1">
                                                                 <span className="px-1.5 py-0.5 bg-neutral-900 border border-neutral-800 rounded text-[9px] font-mono font-bold text-neutral-500 uppercase">
                                                                     {event.category}
@@ -196,6 +310,9 @@ export default function EventsReportPage() {
                                                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${event.gender === 'MALE' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-pink-500/10 text-pink-400'
                                                                     }`}>
                                                                     {event.gender}
+                                                                </span>
+                                                                <span className="px-1.5 py-0.5 bg-neutral-800 border-neutral-700/50 rounded text-[8px] font-bold text-neutral-600 uppercase">
+                                                                    {event.eventType}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -270,6 +387,9 @@ export default function EventsReportPage() {
                                         </span>
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${selectedEvent.gender === 'MALE' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-pink-500/10 text-pink-400'}`}>
                                             {selectedEvent.gender}
+                                        </span>
+                                        <span className="px-2 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[10px] font-mono font-bold text-neutral-600 uppercase">
+                                            {selectedEvent.eventType}
                                         </span>
                                     </div>
                                 </div>
