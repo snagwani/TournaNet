@@ -209,13 +209,18 @@ export default function EventsReportPage() {
                                                         </span>
                                                     </td>
                                                     {/* Medalist Columns */}
-                                                    {[event.gold, event.silver, event.bronze].map((medalist, idx) => (
+                                                    {[
+                                                        { data: event.gold, emoji: '🥇' },
+                                                        { data: event.silver, emoji: '🥈' },
+                                                        { data: event.bronze, emoji: '🥉' }
+                                                    ].map((medal, idx) => (
                                                         <td key={idx} className="px-6 py-6 text-center">
-                                                            {medalist ? (
-                                                                <div className="flex flex-col animate-in fade-in zoom-in duration-300">
-                                                                    <span className="text-white font-bold text-sm tracking-tight">{medalist.athleteName}</span>
+                                                            {medal.data ? (
+                                                                <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                                                                    <span className="text-lg mb-1">{medal.emoji}</span>
+                                                                    <span className="text-white font-bold text-sm tracking-tight">{medal.data.athleteName}</span>
                                                                     <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-tighter truncate max-w-[120px] mx-auto">
-                                                                        {medalist.schoolName}
+                                                                        {medal.data.schoolName}
                                                                     </span>
                                                                 </div>
                                                             ) : (
@@ -276,53 +281,66 @@ export default function EventsReportPage() {
                                     {selectedEvent.results.length === 0 ? (
                                         <p className="text-center text-neutral-700 font-mono text-xs uppercase py-12">No rankings available yet</p>
                                     ) : (
-                                        selectedEvent.results.map((res, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`p-5 bg-neutral-900/50 border rounded-[1.5rem] transition-all relative overflow-hidden group ${res.rank === 1 ? 'border-yellow-500/30 bg-yellow-500/[0.02]' :
-                                                    res.rank === 2 ? 'border-neutral-400/30' :
-                                                        res.rank === 3 ? 'border-amber-700/30' : 'border-neutral-800'
-                                                    }`}
-                                            >
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex gap-4">
-                                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black italic shadow-2xl shrink-0 ${res.rank === 1 ? 'bg-yellow-500 text-neutral-950' :
-                                                            res.rank === 2 ? 'bg-neutral-300 text-neutral-900' :
-                                                                res.rank === 3 ? 'bg-amber-600 text-neutral-950' : 'bg-neutral-800 text-neutral-500'
-                                                            }`}>
-                                                            {res.rank || '-'}
+                                        selectedEvent.results.map((res, idx) => {
+                                            const isPodium = res.rank === 1 || res.rank === 2 || res.rank === 3;
+                                            const medalEmoji = res.rank === 1 ? '🥇' : res.rank === 2 ? '🥈' : res.rank === 3 ? '🥉' : null;
+
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`p-5 bg-neutral-900/50 border rounded-[1.5rem] transition-all relative overflow-hidden group ${res.rank === 1 ? 'border-yellow-500/30 bg-yellow-500/[0.02]' :
+                                                        res.rank === 2 ? 'border-neutral-400/30' :
+                                                            res.rank === 3 ? 'border-amber-700/30' : 'border-neutral-800'
+                                                        }`}
+                                                >
+                                                    {isPodium && (
+                                                        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                                                            <span className="text-4xl">{medalEmoji}</span>
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="text-white font-black text-sm uppercase tracking-tight">{res.athleteName}</p>
-                                                                <span className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[8px] font-bold font-mono text-neutral-400">
-                                                                    #{res.bibNumber}
-                                                                </span>
+                                                    )}
+                                                    <div className="flex justify-between items-start relative z-10">
+                                                        <div className="flex gap-4">
+                                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black italic shadow-2xl shrink-0 ${res.rank === 1 ? 'bg-yellow-500 text-neutral-950' :
+                                                                res.rank === 2 ? 'bg-neutral-300 text-neutral-900' :
+                                                                    res.rank === 3 ? 'bg-amber-600 text-neutral-950' : 'bg-neutral-800 text-neutral-500'
+                                                                }`}>
+                                                                {res.rank || '-'}
                                                             </div>
-                                                            <p className="text-neutral-500 text-[10px] uppercase font-mono tracking-widest leading-none">
-                                                                {res.schoolName}
-                                                            </p>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-white font-black text-sm uppercase tracking-tight">
+                                                                        {res.athleteName}
+                                                                        {isPodium && <span className="ml-2">{medalEmoji}</span>}
+                                                                    </p>
+                                                                    <span className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[8px] font-bold font-mono text-neutral-400">
+                                                                        #{res.bibNumber}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-neutral-500 text-[10px] uppercase font-mono tracking-widest leading-none">
+                                                                    {res.schoolName}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="text-right space-y-1">
-                                                        <p className="text-white font-black font-mono italic text-lg leading-none">{res.resultValue || '-'}</p>
-                                                        <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold font-mono uppercase border ${res.status === 'FINISHED' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                                        <div className="text-right space-y-1">
+                                                            <p className="text-white font-black font-mono italic text-lg leading-none">{res.resultValue || '-'}</p>
+                                                            <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold font-mono uppercase border ${res.status === 'FINISHED' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
                                                                 res.status === 'DNS' ? 'bg-neutral-800 border-neutral-700 text-neutral-500' :
                                                                     'bg-red-500/10 border-red-500/20 text-red-500'
-                                                            }`}>
-                                                            {res.status}
-                                                        </span>
+                                                                }`}>
+                                                                {res.status}
+                                                            </span>
+                                                        </div>
                                                     </div>
+                                                    {res.notes && (
+                                                        <div className="mt-3 pt-3 border-t border-neutral-800/50">
+                                                            <p className="text-neutral-600 text-[9px] font-medium leading-relaxed italic italic">
+                                                                {res.notes}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {res.notes && (
-                                                    <div className="mt-3 pt-3 border-t border-neutral-800/50">
-                                                        <p className="text-neutral-600 text-[9px] font-medium leading-relaxed italic italic">
-                                                            {res.notes}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     )}
                                 </div>
                             </div>
