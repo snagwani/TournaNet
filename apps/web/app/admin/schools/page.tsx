@@ -167,45 +167,67 @@ export default function SchoolsReportPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    schools.map((school) => (
-                                        <tr key={school.schoolId} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors group">
-                                            <td className="px-6 py-6">
-                                                <span className="text-white font-bold group-hover:text-white transition-colors capitalize">
-                                                    {school.schoolName}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-6 text-center">
-                                                <span className="text-neutral-400 font-mono text-sm">{school.athletesCount}</span>
-                                            </td>
-                                            <td className="px-6 py-6 text-center">
-                                                <span className="text-neutral-400 font-mono text-sm">{school.eventsParticipated}</span>
-                                            </td>
-                                            <td className="px-6 py-6 text-center">
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                    <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
-                                                    <span className="text-white font-bold font-mono">{school.gold}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-6 text-center">
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                    <div className="w-2 h-2 rounded-full bg-neutral-400 shadow-[0_0_8px_rgba(163,163,163,0.5)]" />
-                                                    <span className="text-white font-bold font-mono">{school.silver}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-6 text-center">
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                    <div className="w-2 h-2 rounded-full bg-amber-700 shadow-[0_0_8px_rgba(180,83,9,0.5)]" />
-                                                    <span className="text-white font-bold font-mono">{school.bronze}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-6 text-right">
-                                                <span className="text-xl font-black text-white tracking-tight italic">
-                                                    {school.totalPoints}
-                                                </span>
-                                                <span className="text-[10px] text-neutral-500 ml-1 font-mono uppercase tracking-widest">PTS</span>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    schools.map((school, index) => {
+                                        const isFirst = index === 0;
+                                        return (
+                                            <tr
+                                                key={school.schoolId}
+                                                className={`
+                                                    border-b border-neutral-800/50 transition-all duration-300 group
+                                                    ${isFirst ? 'bg-yellow-500/[0.03] relative' : 'hover:bg-white/[0.02]'}
+                                                `}
+                                            >
+                                                <td className="px-6 py-6 ring-inset">
+                                                    <div className="flex items-center gap-3">
+                                                        {isFirst && (
+                                                            <div className="w-1.5 h-6 bg-yellow-500 rounded-full shadow-[0_0_12px_rgba(234,179,8,0.4)]" />
+                                                        )}
+                                                        <span className={`font-bold capitalize transition-colors ${isFirst ? 'text-yellow-500/90' : 'text-white'}`}>
+                                                            {school.schoolName}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <span className="text-neutral-500 font-mono text-xs">{school.athletesCount}</span>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <span className="text-neutral-400 font-mono text-sm">{school.eventsParticipated}</span>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`text-lg font-black font-mono transition-all ${school.gold > 0 ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]' : 'text-neutral-700'}`}>
+                                                            {school.gold}
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-yellow-500/40 uppercase tracking-tighter">Gold</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`text-lg font-black font-mono transition-all ${school.silver > 0 ? 'text-neutral-300 drop-shadow-[0_0_8px_rgba(212,212,212,0.2)]' : 'text-neutral-700'}`}>
+                                                            {school.silver}
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-neutral-400/40 uppercase tracking-tighter">Silver</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`text-lg font-black font-mono transition-all ${school.bronze > 0 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(180,83,9,0.2)]' : 'text-neutral-700'}`}>
+                                                            {school.bronze}
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-amber-700/40 uppercase tracking-tighter">Bronze</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6 text-right">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={`text-2xl font-black tracking-tighter italic transition-all ${isFirst ? 'text-yellow-500' : 'text-white'}`}>
+                                                            {school.totalPoints}
+                                                        </span>
+                                                        <span className="text-[9px] text-neutral-600 font-mono uppercase tracking-[0.2em]">Standing Points</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
