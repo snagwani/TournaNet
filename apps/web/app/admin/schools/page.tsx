@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import RequireAuth from '../../../components/RequireAuth';
+import { useAuth } from '../../../app/context/AuthContext';
 
 interface SchoolPerformance {
-    id: string;
-    name: string;
+    schoolId: string;
+    schoolName: string;
     athletesCount: number;
     eventsParticipated: number;
     gold: number;
@@ -14,61 +15,51 @@ interface SchoolPerformance {
     totalPoints: number;
 }
 
-const MOCK_SCHOOLS: SchoolPerformance[] = [
-    {
-        id: '1',
-        name: 'Silverwood High',
-        athletesCount: 42,
-        eventsParticipated: 15,
-        gold: 8,
-        silver: 4,
-        bronze: 2,
-        totalPoints: 120,
-    },
-    {
-        id: '2',
-        name: 'Mountain View Academy',
-        athletesCount: 35,
-        eventsParticipated: 12,
-        gold: 5,
-        silver: 7,
-        bronze: 3,
-        totalPoints: 95,
-    },
-    {
-        id: '3',
-        name: 'Oak Ridge Collegiate',
-        athletesCount: 28,
-        eventsParticipated: 10,
-        gold: 3,
-        silver: 5,
-        bronze: 6,
-        totalPoints: 72,
-    },
-    {
-        id: '4',
-        name: 'Riverside Preparatory',
-        athletesCount: 50,
-        eventsParticipated: 18,
-        gold: 10,
-        silver: 2,
-        bronze: 5,
-        totalPoints: 135,
-    },
-];
-
 export default function SchoolsReportPage() {
     const [schools, setSchools] = useState<SchoolPerformance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { accessToken } = useAuth();
+
+    const fetchSchools = useCallback(async () => {
+        if (!accessToken) return;
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || 'Failed to fetch school reports');
+            }
+
+            const data = await response.json();
+            const rawSchools = data.schools || [];
+
+            // Sort logic: Gold > Silver > Bronze > Total Points
+            const sorted = [...rawSchools].sort((a: SchoolPerformance, b: SchoolPerformance) => {
+                if (b.gold !== a.gold) return b.gold - a.gold;
+                if (b.silver !== a.silver) return b.silver - a.silver;
+                if (b.bronze !== a.bronze) return b.bronze - a.bronze;
+                return b.totalPoints - a.totalPoints;
+            });
+
+            setSchools(sorted);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [accessToken]);
 
     useEffect(() => {
-        // Simulate API fetch
-        const timer = setTimeout(() => {
-            setSchools(MOCK_SCHOOLS);
-            setIsLoading(false);
-        }, 1500);
-        return () => clearTimeout(timer);
-    }, []);
+        fetchSchools();
+    }, [fetchSchools]);
 
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
@@ -82,12 +73,39 @@ export default function SchoolsReportPage() {
                             Tournament Analytics • Points Standing
                         </p>
                     </div>
-                    <div className="flex gap-2">
-                        <div className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold text-white uppercase tracking-widest">
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => fetchSchools()}
+                            disabled={isLoading}
+                            className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-[10px] font-bold text-neutral-400 uppercase tracking-widest hover:text-white hover:border-neutral-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                            <svg className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Refresh Data
+                        </button>
+                        <div className="px-4 py-2 bg-neutral-900/50 border border-neutral-800 rounded-xl text-[10px] font-bold text-white uppercase tracking-widest flex items-center">
                             Session: 2026 Admin
                         </div>
                     </div>
                 </header>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-medium">{error}</span>
+                        </div>
+                        <button
+                            onClick={() => fetchSchools()}
+                            className="text-[10px] uppercase tracking-widest underline decoration-2 underline-offset-4 font-bold"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                )}
 
                 <section className="bg-neutral-900/30 border border-neutral-800 rounded-[2rem] overflow-hidden shadow-2xl">
                     <div className="overflow-x-auto">
@@ -105,7 +123,6 @@ export default function SchoolsReportPage() {
                             </thead>
                             <tbody>
                                 {isLoading ? (
-                                    // Loading Skeletons
                                     Array.from({ length: 5 }).map((_, i) => (
                                         <tr key={i} className="border-b border-neutral-800/50">
                                             <td className="px-6 py-6">
@@ -132,7 +149,6 @@ export default function SchoolsReportPage() {
                                         </tr>
                                     ))
                                 ) : schools.length === 0 ? (
-                                    // Empty State
                                     <tr>
                                         <td colSpan={7} className="px-6 py-24 text-center">
                                             <div className="flex flex-col items-center space-y-4">
@@ -151,12 +167,11 @@ export default function SchoolsReportPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    // Data Rows
                                     schools.map((school) => (
-                                        <tr key={school.id} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors group">
+                                        <tr key={school.schoolId} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors group">
                                             <td className="px-6 py-6">
                                                 <span className="text-white font-bold group-hover:text-white transition-colors capitalize">
-                                                    {school.name}
+                                                    {school.schoolName}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-6 text-center">
