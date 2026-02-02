@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import RequireAuth from '../../../components/RequireAuth';
 import { useAuth } from '../../../app/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface SchoolPerformance {
     schoolId: string;
@@ -20,6 +21,7 @@ export default function SchoolsReportPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { accessToken } = useAuth();
+    const router = useRouter();
 
     const fetchSchools = useCallback(async () => {
         if (!accessToken) return;
@@ -172,9 +174,10 @@ export default function SchoolsReportPage() {
                                         return (
                                             <tr
                                                 key={school.schoolId}
+                                                onClick={() => router.push(`/admin/schools/${school.schoolId}`)}
                                                 className={`
-                                                    border-b border-neutral-800/50 transition-all duration-300 group
-                                                    ${isFirst ? 'bg-yellow-500/[0.03] relative' : 'hover:bg-white/[0.02]'}
+                                                    border-b border-neutral-800/50 transition-all duration-300 group cursor-pointer
+                                                    ${isFirst ? 'bg-yellow-500/[0.03] relative' : 'hover:bg-white/[0.04]'}
                                                 `}
                                             >
                                                 <td className="px-6 py-6 ring-inset">
