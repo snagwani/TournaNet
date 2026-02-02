@@ -38,7 +38,7 @@ export default function AthletesReportPage() {
         if (!accessToken) return;
         try {
             const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                headers: { 'Authorization': `Bearer ${accessToken}` },
+                credentials: 'include'
             });
             if (response.ok) {
                 const data = await response.json();
@@ -61,9 +61,7 @@ export default function AthletesReportPage() {
             if (filters.gender) params.append('gender', filters.gender);
 
             const response = await fetch(`http://localhost:3001/api/admin/reports/athletes?${params.toString()}`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
+                credentials: 'include'
             });
 
             if (!response.ok) {

@@ -57,9 +57,7 @@ export default function EventsReportPage() {
         setError(null);
         try {
             const response = await fetch('http://localhost:3001/api/admin/reports/events', {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
+                credentials: 'include'
             });
 
             if (!response.ok) {

@@ -17,9 +17,9 @@ export default function RequireAuth({ children, allowedRoles }: RequireAuthProps
 
     useEffect(() => {
         if (!isLoading) {
-            if (!accessToken) {
+            if (!user) {
                 router.push('/login');
-            } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+            } else if (allowedRoles && !allowedRoles.includes(user.role)) {
                 setIsUnauthorized(true);
                 const timer = setTimeout(() => {
                     router.push('/login');
@@ -27,7 +27,7 @@ export default function RequireAuth({ children, allowedRoles }: RequireAuthProps
                 return () => clearTimeout(timer);
             }
         }
-    }, [accessToken, user, isLoading, allowedRoles, router]);
+    }, [user, isLoading, allowedRoles, router]);
 
     if (isLoading) {
         return (
@@ -58,7 +58,7 @@ export default function RequireAuth({ children, allowedRoles }: RequireAuthProps
         );
     }
 
-    if (!accessToken || (allowedRoles && user && !allowedRoles.includes(user.role))) {
+    if (!user || (allowedRoles && !allowedRoles.includes(user.role))) {
         return null;
     }
 

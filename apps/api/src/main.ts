@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import * as cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggerService } from './common/logger/logger.service';
 
@@ -9,6 +10,8 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         bufferLogs: true,
     });
+
+    app.use(cookieParser());
 
     // Get services
     const configService = app.get(ConfigService);
@@ -34,7 +37,7 @@ async function bootstrap() {
 
     // CORS for frontend
     app.enableCors({
-        origin: configService.get<string>('CORS_ORIGIN', '*'),
+        origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
         credentials: true,
     });
 

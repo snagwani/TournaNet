@@ -30,9 +30,7 @@ export default function SchoolsReportPage() {
         setError(null);
         try {
             const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
+                credentials: 'include'
             });
 
             if (!response.ok) {

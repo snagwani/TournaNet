@@ -29,6 +29,7 @@ export default function LoginForm() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ email, password }),
+                credentials: 'include'
             });
 
             const data = await response.json();
@@ -37,8 +38,8 @@ export default function LoginForm() {
                 throw new Error(data.message || 'Authentication failed');
             }
 
-            // Success: Use context to store token and fetch profile
-            const loggedInUser = await login(data.accessToken);
+            // Success: Call context login (which now just fetches profile via cookies)
+            const loggedInUser = await login(""); // Token no longer needed for context
             if (loggedInUser) {
                 const path = loggedInUser.role === 'ADMIN' ? '/admin' : '/scorer';
                 router.push(path);

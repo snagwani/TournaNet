@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 interface User {
     id: string;
@@ -9,7 +9,7 @@ interface User {
 }
 
 interface AuthContextType {
-    accessToken: string | null;
+    accessToken: string | null; // Keep for legacy/internal consistency, will be null if only using cookies
     user: User | null;
     login: (token: string) => Promise<User | null>;
     logout: () => void;
@@ -21,17 +21,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const login = async (token: string): Promise<User | null> => {
+    const fetchProfile = async () => {
         setIsLoading(true);
-        setAccessToken(token);
-
         try {
             const response = await fetch('http://localhost:3001/api/auth/me', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+            } else {
+                setUser(null);
+            }
+        } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+            setUser(null);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfile();
+    }, []);
+
+    const login = async (token: string): Promise<User | null> => {
+        // With cookies, the token is already set in the browser by the Redirect/Response
+        // We just need to fetch the profile to sync the state
+        setIsLoading(true);
+        try {
+            const response = await fetch('http://localhost:3001/api/auth/me', {
+                credentials: 'include'
             });
 
             if (response.ok) {
@@ -39,21 +62,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(userData);
                 return userData;
             } else {
-                setAccessToken(null);
                 return null;
             }
         } catch (error) {
-            console.error('Failed to fetch user profile:', error);
-            setAccessToken(null);
+            console.error('Login profile fetch failed:', error);
             return null;
         } finally {
             setIsLoading(false);
         }
     };
 
-    const logout = () => {
-        setAccessToken(null);
-        setUser(null);
+    const logout = async () => {
+        try {
+            await fetch('http://localhost:3001/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } catch (error) {
+            console.error('Logout failed:', error);
+        } finally {
+            setUser(null);
+            setAccessToken(null);
+        }
     };
 
     return (
