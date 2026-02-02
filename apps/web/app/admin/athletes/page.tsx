@@ -233,7 +233,11 @@ export default function AthletesReportPage() {
                                     </tr>
                                 ) : (
                                     athletes.map((athlete) => (
-                                        <tr key={athlete.athleteId} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors group">
+                                        <tr
+                                            key={athlete.athleteId}
+                                            onClick={() => router.push(`/admin/athletes/${athlete.athleteId}`)}
+                                            className="border-b border-neutral-800/50 hover:bg-white/[0.04] transition-colors group cursor-pointer"
+                                        >
                                             <td className="px-6 py-6">
                                                 <span className="text-white font-bold group-hover:text-white transition-colors capitalize">
                                                     {athlete.athleteName}

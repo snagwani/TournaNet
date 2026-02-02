@@ -155,6 +155,53 @@ export class AdminService {
         };
     }
 
+    async getAthleteDetail(id: string) {
+        const athlete = await this.prisma.athlete.findUnique({
+            where: { id },
+            include: {
+                school: true,
+                results: {
+                    include: {
+                        heat: {
+                            include: {
+                                event: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        heat: {
+                            event: {
+                                date: 'desc'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!athlete) return null;
+
+        return {
+            athleteId: athlete.id,
+            athleteName: athlete.name,
+            bibNumber: athlete.bibNumber,
+            schoolName: athlete.school.name,
+            category: athlete.category,
+            gender: athlete.gender,
+            personalBest: athlete.personalBest,
+            events: athlete.results.map(r => ({
+                eventId: r.heat.eventId,
+                eventName: r.heat.event.name,
+                eventType: r.heat.event.eventType,
+                date: r.heat.event.date,
+                rank: r.rank,
+                resultValue: r.resultValue,
+                status: r.status,
+                notes: r.notes
+            }))
+        };
+    }
+
     async getEventReports() {
         const events = await this.prisma.event.findMany({
             include: {

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UsePipes, ValidationPipe, UseGuards, Param, NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AthleteReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,6 +26,13 @@ export class AdminController {
     @UsePipes(new ValidationPipe({ transform: true }))
     async getAthleteReports(@Query() query: AthleteReportQueryDto) {
         return this.adminService.getAthleteReports(query);
+    }
+
+    @Get('reports/athletes/:id')
+    async getAthleteDetail(@Param('id') id: string) {
+        const detail = await this.adminService.getAthleteDetail(id);
+        if (!detail) throw new NotFoundException('Athlete not found');
+        return detail;
     }
 
     @Get('reports/events')
