@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginForm() {
@@ -8,6 +9,14 @@ export default function LoginForm() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const { login, isLoading, accessToken, user } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (user) {
+            const path = user.role === 'ADMIN' ? '/admin' : '/scorer';
+            router.push(path);
+        }
+    }, [user, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,8 +38,11 @@ export default function LoginForm() {
             }
 
             // Success: Use context to store token and fetch profile
-            await login(data.accessToken);
-            console.log("Login successful, profile fetched.");
+            const loggedInUser = await login(data.accessToken);
+            if (loggedInUser) {
+                const path = loggedInUser.role === 'ADMIN' ? '/admin' : '/scorer';
+                router.push(path);
+            }
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
         }

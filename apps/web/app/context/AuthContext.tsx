@@ -11,7 +11,7 @@ interface User {
 interface AuthContextType {
     accessToken: string | null;
     user: User | null;
-    login: (token: string) => Promise<void>;
+    login: (token: string) => Promise<User | null>;
     logout: () => void;
     isLoading: boolean;
 }
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const login = async (token: string) => {
+    const login = async (token: string): Promise<User | null> => {
         setIsLoading(true);
         setAccessToken(token);
 
@@ -37,13 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (response.ok) {
                 const userData = await response.json();
                 setUser(userData);
+                return userData;
             } else {
-                // If profile fetch fails, clear token
                 setAccessToken(null);
+                return null;
             }
         } catch (error) {
             console.error('Failed to fetch user profile:', error);
             setAccessToken(null);
+            return null;
         } finally {
             setIsLoading(false);
         }
