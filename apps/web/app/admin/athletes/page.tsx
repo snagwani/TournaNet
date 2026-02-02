@@ -20,21 +20,6 @@ interface SchoolOption {
     name: string;
 }
 
-const MOCK_ATHLETES: AthletePerformance[] = [
-    { athleteId: '1', athleteName: 'John Doe', bibNumber: 101, schoolName: 'Greenwood High', category: 'U17', gender: 'MALE', eventsCount: 3 },
-    { athleteId: '2', athleteName: 'Jane Smith', bibNumber: 102, schoolName: 'Riverside Academy', category: 'U14', gender: 'FEMALE', eventsCount: 2 },
-    { athleteId: '3', athleteName: 'Michael Brown', bibNumber: 103, schoolName: 'St. Peter\'s School', category: 'U19', gender: 'MALE', eventsCount: 4 },
-    { athleteId: '4', athleteName: 'Sarah Wilson', bibNumber: 104, schoolName: 'Greenwood High', category: 'U17', gender: 'FEMALE', eventsCount: 1 },
-    { athleteId: '5', athleteName: 'David Lee', bibNumber: 105, schoolName: 'Oakwood International', category: 'U14', gender: 'MALE', eventsCount: 2 },
-];
-
-const MOCK_SCHOOLS: SchoolOption[] = [
-    { id: '1', name: 'Greenwood High' },
-    { id: '2', name: 'Riverside Academy' },
-    { id: '3', name: 'St. Peter\'s School' },
-    { id: '4', name: 'Oakwood International' },
-];
-
 export default function AthletesReportPage() {
     const [athletes, setAthletes] = useState<AthletePerformance[]>([]);
     const [schoolsList, setSchoolsList] = useState<SchoolOption[]>([]);
@@ -46,28 +31,68 @@ export default function AthletesReportPage() {
         gender: ''
     });
 
+    const { user } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        // Simulate loading
-        const timer = setTimeout(() => {
-            setAthletes(MOCK_ATHLETES);
-            setSchoolsList(MOCK_SCHOOLS);
-            setIsLoading(false);
-        }, 1200);
-        return () => clearTimeout(timer);
+    const fetchSchools = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setSchoolsList((data.schools || []).map((s: any) => ({
+                    id: s.schoolId,
+                    name: s.schoolName
+                })));
+            }
+        } catch (err) {
+            console.error('Failed to fetch schools list', err);
+        }
     }, []);
+
+    const fetchAthletes = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const params = new URLSearchParams();
+            if (filters.schoolId) params.append('schoolId', filters.schoolId);
+            if (filters.category) params.append('category', filters.category);
+            if (filters.gender) params.append('gender', filters.gender);
+
+            const response = await fetch(`http://localhost:3001/api/admin/reports/athletes?${params.toString()}`, {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || 'Failed to fetch athlete reports');
+            }
+
+            const data = await response.json();
+            setAthletes(data.athletes || []);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [filters]);
+
+    useEffect(() => {
+        if (user) {
+            fetchSchools();
+        }
+    }, [user, fetchSchools]);
+
+    useEffect(() => {
+        if (user) {
+            fetchAthletes();
+        }
+    }, [user, fetchAthletes]);
 
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
-
-    const filteredAthletes = athletes.filter(a => {
-        const schoolMatch = !filters.schoolId || a.schoolName === MOCK_SCHOOLS.find(s => s.id === filters.schoolId)?.name;
-        const categoryMatch = !filters.category || a.category === filters.category;
-        const genderMatch = !filters.gender || a.gender === filters.gender;
-        return schoolMatch && categoryMatch && genderMatch;
-    });
 
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
@@ -161,7 +186,7 @@ export default function AthletesReportPage() {
                                             </td>
                                         </tr>
                                     ))
-                                ) : filteredAthletes.length === 0 ? (
+                                ) : athletes.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-24 text-center">
                                             <div className="flex flex-col items-center space-y-4">
@@ -180,7 +205,7 @@ export default function AthletesReportPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredAthletes.map((athlete) => (
+                                    athletes.map((athlete: AthletePerformance) => (
                                         <tr
                                             key={athlete.athleteId}
                                             onClick={() => router.push(`/admin/athletes/${athlete.athleteId}`)}
