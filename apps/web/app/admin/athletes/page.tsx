@@ -15,12 +15,39 @@ interface AthletePerformance {
     eventsCount: number;
 }
 
+interface SchoolOption {
+    id: string;
+    name: string;
+}
+
 export default function AthletesReportPage() {
     const [athletes, setAthletes] = useState<AthletePerformance[]>([]);
+    const [schoolsList, setSchoolsList] = useState<SchoolOption[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [filters, setFilters] = useState({
+        schoolId: '',
+        category: '',
+        gender: ''
+    });
+
     const { accessToken } = useAuth();
     const router = useRouter();
+
+    const fetchSchools = useCallback(async () => {
+        if (!accessToken) return;
+        try {
+            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setSchoolsList((data.schools || []).map((s: any) => ({ id: s.schoolId, name: s.schoolName })));
+            }
+        } catch (err) {
+            console.error('Failed to fetch schools list', err);
+        }
+    }, [accessToken]);
 
     const fetchAthletes = useCallback(async () => {
         if (!accessToken) return;
@@ -28,7 +55,12 @@ export default function AthletesReportPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('http://localhost:3001/api/admin/reports/athletes', {
+            const params = new URLSearchParams();
+            if (filters.schoolId) params.append('schoolId', filters.schoolId);
+            if (filters.category) params.append('category', filters.category);
+            if (filters.gender) params.append('gender', filters.gender);
+
+            const response = await fetch(`http://localhost:3001/api/admin/reports/athletes?${params.toString()}`, {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                 },
@@ -46,11 +78,19 @@ export default function AthletesReportPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [accessToken]);
+    }, [accessToken, filters]);
+
+    useEffect(() => {
+        fetchSchools();
+    }, [fetchSchools]);
 
     useEffect(() => {
         fetchAthletes();
     }, [fetchAthletes]);
+
+    const handleFilterChange = (key: string, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
 
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
@@ -77,6 +117,47 @@ export default function AthletesReportPage() {
                         </button>
                     </div>
                 </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-neutral-900/20 p-4 rounded-3xl border border-neutral-800/50">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest ml-1">Filter by School</label>
+                        <select
+                            value={filters.schoolId}
+                            onChange={(e) => handleFilterChange('schoolId', e.target.value)}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neutral-700 transition-colors appearance-none cursor-pointer"
+                        >
+                            <option value="">All Schools</option>
+                            {schoolsList.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest ml-1">Category</label>
+                        <select
+                            value={filters.category}
+                            onChange={(e) => handleFilterChange('category', e.target.value)}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neutral-700 transition-colors appearance-none cursor-pointer"
+                        >
+                            <option value="">All Categories</option>
+                            <option value="U14">U14 (Under 14)</option>
+                            <option value="U17">U17 (Under 17)</option>
+                            <option value="U19">U19 (Under 19)</option>
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest ml-1">Gender</label>
+                        <select
+                            value={filters.gender}
+                            onChange={(e) => handleFilterChange('gender', e.target.value)}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neutral-700 transition-colors appearance-none cursor-pointer"
+                        >
+                            <option value="">All Genders</option>
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                        </select>
+                    </div>
+                </div>
 
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
@@ -173,8 +254,8 @@ export default function AthletesReportPage() {
                                             </td>
                                             <td className="px-6 py-6 text-center">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase border ${athlete.gender === 'MALE'
-                                                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
-                                                        : 'bg-pink-500/10 border-pink-500/20 text-pink-400'
+                                                    ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                                                    : 'bg-pink-500/10 border-pink-500/20 text-pink-400'
                                                     }`}>
                                                     {athlete.gender}
                                                 </span>
