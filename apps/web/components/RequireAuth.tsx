@@ -18,7 +18,12 @@ export default function RequireAuth({ children, allowedRoles }: RequireAuthProps
     useEffect(() => {
         if (!isLoading) {
             if (!user) {
-                router.push('/login');
+                // Show unauthorized message and then redirect even if not logged in
+                setIsUnauthorized(true);
+                const timer = setTimeout(() => {
+                    router.push('/login');
+                }, 2000);
+                return () => clearTimeout(timer);
             } else if (allowedRoles && !allowedRoles.includes(user.role)) {
                 setIsUnauthorized(true);
                 const timer = setTimeout(() => {
