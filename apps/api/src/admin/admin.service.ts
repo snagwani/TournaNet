@@ -254,6 +254,8 @@ export class AdminService {
                     bronze: getMedalist(3),
                     results: sorted.map(r => ({
                         athleteId: r.athleteId,
+                        athleteName: r.athlete.name,
+                        schoolName: r.athlete.school.name,
                         bibNumber: r.bibNumber,
                         status: r.status,
                         resultValue: r.resultValue,

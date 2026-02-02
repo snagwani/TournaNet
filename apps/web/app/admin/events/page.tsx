@@ -12,6 +12,8 @@ interface Medalist {
 
 interface EventResult {
     athleteId: string;
+    athleteName: string;
+    schoolName: string;
     bibNumber: number;
     status: string;
     resultValue: string | null;
@@ -73,7 +75,7 @@ export default function EventsReportPage() {
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
             <div className="flex min-h-screen bg-neutral-950">
-                <main className={`flex-1 p-8 space-y-8 transition-all duration-500 ${selectedEventId ? 'mr-[400px]' : ''}`}>
+                <main className={`flex-1 p-8 space-y-8 transition-all duration-500 ${selectedEventId ? 'mr-[450px]' : ''}`}>
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-6 gap-4">
                         <div className="space-y-1">
                             <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">
@@ -239,13 +241,13 @@ export default function EventsReportPage() {
 
                 {/* Leaderboard Drawer */}
                 <aside
-                    className={`fixed top-0 right-0 h-full w-[400px] bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-transform duration-500 z-50 ${selectedEventId ? 'translate-x-0' : 'translate-x-full'}`}
+                    className={`fixed top-0 right-0 h-full w-[450px] bg-neutral-900 border-l border-neutral-800 shadow-2xl transition-transform duration-500 z-50 ${selectedEventId ? 'translate-x-0' : 'translate-x-full'}`}
                 >
                     {selectedEvent && (
                         <div className="flex flex-col h-full bg-neutral-950">
                             <header className="p-8 border-b border-neutral-800 space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Event Leaderboard</h2>
+                                    <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Event Results</h2>
                                     <button
                                         onClick={() => setSelectedEventId(null)}
                                         className="p-2 hover:bg-neutral-900 rounded-full text-neutral-500 hover:text-white transition-colors"
@@ -269,40 +271,56 @@ export default function EventsReportPage() {
                             </header>
 
                             <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                                <h4 className="text-[10px] font-bold text-neutral-600 uppercase tracking-[0.3em]">Full Rankings</h4>
-                                <div className="space-y-3">
+                                <h4 className="text-[10px] font-bold text-neutral-600 uppercase tracking-[0.3em]">Athlete Rankings</h4>
+                                <div className="space-y-4">
                                     {selectedEvent.results.length === 0 ? (
                                         <p className="text-center text-neutral-700 font-mono text-xs uppercase py-12">No rankings available yet</p>
                                     ) : (
                                         selectedEvent.results.map((res, idx) => (
                                             <div
                                                 key={idx}
-                                                className={`flex items-center justify-between p-4 bg-neutral-900/50 border rounded-2xl transition-all ${res.rank === 1 ? 'border-yellow-500/30' :
+                                                className={`p-5 bg-neutral-900/50 border rounded-[1.5rem] transition-all relative overflow-hidden group ${res.rank === 1 ? 'border-yellow-500/30 bg-yellow-500/[0.02]' :
                                                     res.rank === 2 ? 'border-neutral-400/30' :
                                                         res.rank === 3 ? 'border-amber-700/30' : 'border-neutral-800'
                                                     }`}
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black italic shadow-inner ${res.rank === 1 ? 'bg-yellow-500 text-neutral-950' :
-                                                        res.rank === 2 ? 'bg-neutral-300 text-neutral-900' :
-                                                            res.rank === 3 ? 'bg-amber-600 text-neutral-950' : 'bg-neutral-800 text-neutral-500'
-                                                        }`}>
-                                                        {res.rank || '-'}
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-white font-bold text-xs uppercase tracking-tight">Bib #{res.bibNumber}</span>
-                                                            <span className={`text-[9px] font-mono font-bold uppercase ${res.status === 'FINISHED' ? 'text-green-500' : 'text-red-500'
-                                                                }`}>
-                                                                {res.status}
-                                                            </span>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex gap-4">
+                                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black italic shadow-2xl shrink-0 ${res.rank === 1 ? 'bg-yellow-500 text-neutral-950' :
+                                                            res.rank === 2 ? 'bg-neutral-300 text-neutral-900' :
+                                                                res.rank === 3 ? 'bg-amber-600 text-neutral-950' : 'bg-neutral-800 text-neutral-500'
+                                                            }`}>
+                                                            {res.rank || '-'}
                                                         </div>
-                                                        <p className="text-neutral-400 text-[10px] font-medium leading-tight mt-0.5">{res.notes || 'No extra notes'}</p>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-white font-black text-sm uppercase tracking-tight">{res.athleteName}</p>
+                                                                <span className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[8px] font-bold font-mono text-neutral-400">
+                                                                    #{res.bibNumber}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-neutral-500 text-[10px] uppercase font-mono tracking-widest leading-none">
+                                                                {res.schoolName}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right space-y-1">
+                                                        <p className="text-white font-black font-mono italic text-lg leading-none">{res.resultValue || '-'}</p>
+                                                        <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold font-mono uppercase border ${res.status === 'FINISHED' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                                                res.status === 'DNS' ? 'bg-neutral-800 border-neutral-700 text-neutral-500' :
+                                                                    'bg-red-500/10 border-red-500/20 text-red-500'
+                                                            }`}>
+                                                            {res.status}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <span className="text-white font-black font-mono italic text-sm">{res.resultValue || '-'}</span>
-                                                </div>
+                                                {res.notes && (
+                                                    <div className="mt-3 pt-3 border-t border-neutral-800/50">
+                                                        <p className="text-neutral-600 text-[9px] font-medium leading-relaxed italic italic">
+                                                            {res.notes}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))
                                     )}
