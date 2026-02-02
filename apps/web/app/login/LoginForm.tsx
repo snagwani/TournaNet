@@ -1,17 +1,16 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
+    const { login, isLoading, accessToken, user } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
         setError(null);
 
         try {
@@ -29,13 +28,11 @@ export default function LoginForm() {
                 throw new Error(data.message || 'Authentication failed');
             }
 
-            // Success: Store token in memory
-            setToken(data.accessToken);
-            console.log("Login successful, token stored in memory.");
+            // Success: Use context to store token and fetch profile
+            await login(data.accessToken);
+            console.log("Login successful, profile fetched.");
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -90,12 +87,19 @@ export default function LoginForm() {
                     </div>
                 )}
 
-                {token && (
-                    <div className="bg-green-500/10 border border-green-500/20 text-green-500 text-xs py-3 px-4 rounded-xl flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Login Successful! Token stored in memory.
+                {accessToken && (
+                    <div className="bg-green-500/10 border border-green-500/20 text-green-500 text-xs py-3 px-4 rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="font-bold">Login Successful!</span>
+                        </div>
+                        {user && (
+                            <p className="text-[10px] opacity-70 ml-6 uppercase tracking-wider">
+                                Welcome, {user.email} ({user.role})
+                            </p>
+                        )}
                     </div>
                 )}
 
