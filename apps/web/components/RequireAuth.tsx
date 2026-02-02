@@ -13,19 +13,23 @@ export default function RequireAuth({ children, allowedRoles }: RequireAuthProps
     const { accessToken, user, isLoading } = useAuth();
     const router = useRouter();
 
+    const [isUnauthorized, setIsUnauthorized] = React.useState(false);
+
     useEffect(() => {
         if (!isLoading) {
             if (!accessToken) {
                 router.push('/login');
             } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-                // If logged in but role not allowed, redirect to a default safe page
-                // or show an unauthorized state. For now, redirecting to home or login.
-                router.push('/');
+                setIsUnauthorized(true);
+                const timer = setTimeout(() => {
+                    router.push('/login');
+                }, 2000);
+                return () => clearTimeout(timer);
             }
         }
     }, [accessToken, user, isLoading, allowedRoles, router]);
 
-    if (isLoading || !accessToken || (allowedRoles && user && !allowedRoles.includes(user.role))) {
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center space-y-4">
                 <div className="w-12 h-12 border-4 border-neutral-800 border-t-white rounded-full animate-spin" />
@@ -34,6 +38,28 @@ export default function RequireAuth({ children, allowedRoles }: RequireAuthProps
                 </p>
             </div>
         );
+    }
+
+    if (isUnauthorized) {
+        return (
+            <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center space-y-6">
+                <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+                    <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div className="text-center space-y-2">
+                    <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Access Denied</h2>
+                    <p className="text-neutral-500 text-sm font-mono uppercase tracking-[0.2em]">
+                        Insufficient Permissions • Redirecting to Login
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!accessToken || (allowedRoles && user && !allowedRoles.includes(user.role))) {
+        return null;
     }
 
     return <>{children}</>;
