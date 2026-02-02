@@ -141,6 +141,9 @@ export class AdminService {
                 athleteName: a.name,
                 bibNumber: a.bibNumber,
                 schoolName: a.school.name,
+                category: a.category,
+                gender: a.gender,
+                eventsCount: a.results.length,
                 events: a.results.map(r => ({
                     eventName: r.heat.event.name,
                     eventType: r.heat.event.eventType,

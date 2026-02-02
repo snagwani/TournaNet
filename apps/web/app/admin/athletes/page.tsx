@@ -1,0 +1,204 @@
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import RequireAuth from '../../../components/RequireAuth';
+import { useAuth } from '../../../app/context/AuthContext';
+import { useRouter } from 'next/navigation';
+
+interface AthletePerformance {
+    athleteId: string;
+    athleteName: string;
+    bibNumber: number;
+    schoolName: string;
+    category: string;
+    gender: string;
+    eventsCount: number;
+}
+
+export default function AthletesReportPage() {
+    const [athletes, setAthletes] = useState<AthletePerformance[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { accessToken } = useAuth();
+    const router = useRouter();
+
+    const fetchAthletes = useCallback(async () => {
+        if (!accessToken) return;
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('http://localhost:3001/api/admin/reports/athletes', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || 'Failed to fetch athlete reports');
+            }
+
+            const data = await response.json();
+            setAthletes(data.athletes || []);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [accessToken]);
+
+    useEffect(() => {
+        fetchAthletes();
+    }, [fetchAthletes]);
+
+    return (
+        <RequireAuth allowedRoles={['ADMIN']}>
+            <main className="min-h-screen bg-neutral-950 p-8 space-y-8">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-6 gap-4">
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">
+                            Athlete Performance Report
+                        </h1>
+                        <p className="text-neutral-500 text-sm font-mono uppercase tracking-widest">
+                            Tournament Analytics • Athlete Statistics
+                        </p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => fetchAthletes()}
+                            disabled={isLoading}
+                            className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-[10px] font-bold text-neutral-400 uppercase tracking-widest hover:text-white hover:border-neutral-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                            <svg className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Refresh Data
+                        </button>
+                    </div>
+                </header>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-medium">{error}</span>
+                        </div>
+                        <button
+                            onClick={() => fetchAthletes()}
+                            className="text-[10px] uppercase tracking-widest underline decoration-2 underline-offset-4 font-bold"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                )}
+
+                <section className="bg-neutral-900/30 border border-neutral-800 rounded-[2rem] overflow-hidden shadow-2xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-neutral-900/50 border-b border-neutral-800">
+                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500">Athlete Name</th>
+                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Bib #</th>
+                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500">School</th>
+                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Category</th>
+                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Gender</th>
+                                    <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-right">Events Participated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {isLoading ? (
+                                    Array.from({ length: 8 }).map((_, i) => (
+                                        <tr key={i} className="border-b border-neutral-800/50">
+                                            <td className="px-6 py-6 font-bold">
+                                                <div className="h-4 w-32 bg-neutral-800/50 animate-pulse rounded-full" />
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <div className="h-4 w-12 bg-neutral-800/50 animate-pulse rounded-full mx-auto" />
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <div className="h-4 w-40 bg-neutral-800/50 animate-pulse rounded-full" />
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <div className="h-4 w-12 bg-neutral-800/50 animate-pulse rounded-full mx-auto" />
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <div className="h-4 w-16 bg-neutral-800/50 animate-pulse rounded-full mx-auto" />
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <div className="h-4 w-8 bg-neutral-800/50 animate-pulse rounded-full ml-auto" />
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : athletes.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-24 text-center">
+                                            <div className="flex flex-col items-center space-y-4">
+                                                <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-3xl flex items-center justify-center">
+                                                    <svg className="w-8 h-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-white font-bold text-lg">No Athlete Data Available</p>
+                                                    <p className="text-neutral-500 text-sm max-w-xs mx-auto">
+                                                        The athlete report will be populated once registrations are processed.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    athletes.map((athlete) => (
+                                        <tr key={athlete.athleteId} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors group">
+                                            <td className="px-6 py-6">
+                                                <span className="text-white font-bold group-hover:text-white transition-colors capitalize">
+                                                    {athlete.athleteName}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-6 text-center">
+                                                <span className="px-3 py-1 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-400 font-mono text-xs uppercase tracking-tight">
+                                                    #{athlete.bibNumber}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-6">
+                                                <span className="text-neutral-400 text-sm capitalize">{athlete.schoolName}</span>
+                                            </td>
+                                            <td className="px-6 py-6 text-center">
+                                                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded text-[10px] font-bold font-mono">
+                                                    {athlete.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-6 text-center">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase border ${athlete.gender === 'MALE'
+                                                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                                                        : 'bg-pink-500/10 border-pink-500/20 text-pink-400'
+                                                    }`}>
+                                                    {athlete.gender}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-6 text-right">
+                                                <span className="text-xl font-black text-white tracking-tight italic">
+                                                    {athlete.eventsCount}
+                                                </span>
+                                                <span className="text-[10px] text-neutral-500 ml-1 font-mono uppercase tracking-widest">Events</span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <footer className="pt-8 border-t border-neutral-900 text-center">
+                    <p className="text-[10px] text-neutral-700 uppercase tracking-[0.3em] font-medium">
+                        TournaNet Analytics Engine • Build 2026.02.02
+                    </p>
+                </footer>
+            </main>
+        </RequireAuth>
+    );
+}
