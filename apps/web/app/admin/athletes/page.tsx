@@ -94,6 +94,16 @@ export default function AthletesReportPage() {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
+    const clearFilters = () => {
+        setFilters({
+            schoolId: '',
+            category: '',
+            gender: ''
+        });
+    };
+
+    const isFiltered = filters.schoolId || filters.category || filters.gender;
+
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
             <main className="min-h-screen bg-neutral-950 p-8 space-y-8">
@@ -106,6 +116,19 @@ export default function AthletesReportPage() {
                             Tournament Analytics • Athlete Statistics
                         </p>
                     </div>
+                    {isFiltered && (
+                        <button
+                            onClick={clearFilters}
+                            className="text-[10px] text-neutral-500 hover:text-white uppercase tracking-[0.2em] font-bold transition-colors flex items-center gap-2 group bg-neutral-900/50 px-4 py-2 rounded-full border border-neutral-800/50 hover:border-neutral-700 animate-in fade-in slide-in-from-right-2"
+                        >
+                            <span className="w-5 h-5 rounded-full border border-neutral-800 flex items-center justify-center group-hover:border-neutral-600 transition-colors">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </span>
+                            Clear All Filters
+                        </button>
+                    )}
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-neutral-900/20 p-4 rounded-3xl border border-neutral-800/50">
