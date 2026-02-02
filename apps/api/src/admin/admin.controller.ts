@@ -1,8 +1,14 @@
-import { Controller, Get, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Query, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AthleteReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class AdminController {
     constructor(private readonly adminService: AdminService) { }
 

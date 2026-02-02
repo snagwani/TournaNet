@@ -12,6 +12,7 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { ResultsModule } from './results/results.module';
 import { ScoreboardModule } from './scoreboard/scoreboard.module';
 import { AdminModule } from './admin/admin.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
     imports: [
@@ -36,6 +37,7 @@ import { AdminModule } from './admin/admin.module';
         ResultsModule,
         ScoreboardModule,
         AdminModule,
+        AuthModule,
     ],
 })
 export class AppModule { }

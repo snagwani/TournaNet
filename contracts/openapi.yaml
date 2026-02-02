@@ -59,6 +59,10 @@ paths:
     $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1medals'
   /scoreboard/athletes/search:
     $ref: './components/scoreboard.yaml#/paths/~1scoreboard~1athletes~1search'
+  /auth/login:
+    $ref: './components/auth.yaml#/paths/~1auth~1login'
+  /auth/me:
+    $ref: './components/auth.yaml#/paths/~1auth~1me'
   /admin/overview:
     $ref: './components/admin.yaml#/paths/~1admin~1overview'
   /admin/reports/schools:
