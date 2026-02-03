@@ -32,6 +32,8 @@ export default function SchoolRegistrationPage() {
     const [errors, setErrors] = useState<FormErrors>({});
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [apiError, setApiError] = useState<string | null>(null);
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
@@ -75,6 +77,10 @@ export default function SchoolRegistrationPage() {
         if (errors[field as keyof FormErrors]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
+        // Clear API error when user makes changes
+        if (apiError) {
+            setApiError(null);
+        }
     };
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,18 +100,74 @@ export default function SchoolRegistrationPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Clear previous messages
+        setSuccessMessage(null);
+        setApiError(null);
+
         if (!validateForm()) {
             return;
         }
 
         setIsSubmitting(true);
 
-        // Simulate API call (no actual backend integration yet)
-        setTimeout(() => {
-            console.log('Form submitted:', formData);
-            alert('School registration form validated successfully! (API not connected yet)');
+        try {
+            const response = await fetch('http://localhost:3001/api/schools', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    name: formData.schoolName,
+                    district: formData.district,
+                    contactName: formData.contactPersonName,
+                    contactEmail: formData.contactEmail,
+                    contactPhone: formData.contactPhone || undefined,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+
+                // Handle validation errors (422)
+                if (response.status === 422) {
+                    if (errorData.message && Array.isArray(errorData.message)) {
+                        // Multiple validation errors
+                        setApiError(errorData.message.join(', '));
+                    } else {
+                        setApiError(errorData.message || 'Validation failed. Please check your inputs.');
+                    }
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Handle duplicate school error (400)
+                if (response.status === 400) {
+                    setApiError(errorData.message || 'School with this name already exists in this district');
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Handle other errors
+                throw new Error(errorData.message || 'Failed to register school');
+            }
+
+            const result = await response.json();
+
+            // Success! Clear form and show success message
+            setSuccessMessage(`School "${formData.schoolName}" has been successfully registered!`);
+            handleReset();
+
+            // Auto-hide success message after 5 seconds
+            setTimeout(() => {
+                setSuccessMessage(null);
+            }, 5000);
+
+        } catch (err: any) {
+            setApiError(err.message || 'An unexpected error occurred. Please try again.');
+        } finally {
             setIsSubmitting(false);
-        }, 1000);
+        }
     };
 
     const handleReset = () => {
@@ -119,6 +181,7 @@ export default function SchoolRegistrationPage() {
         });
         setErrors({});
         setLogoPreview(null);
+        setApiError(null);
     };
 
     return (
@@ -133,6 +196,46 @@ export default function SchoolRegistrationPage() {
                     </p>
                 </div>
             </header>
+
+            {/* Success Message */}
+            {successMessage && (
+                <div className="bg-green-500/10 border border-green-500/20 text-green-500 text-sm py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-medium">{successMessage}</span>
+                    </div>
+                    <button
+                        onClick={() => setSuccessMessage(null)}
+                        className="text-green-500/70 hover:text-green-500 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+
+            {/* Error Message */}
+            {apiError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-medium">{apiError}</span>
+                    </div>
+                    <button
+                        onClick={() => setApiError(null)}
+                        className="text-red-500/70 hover:text-red-500 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* School Information Section */}
