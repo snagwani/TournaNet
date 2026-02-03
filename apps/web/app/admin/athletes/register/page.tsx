@@ -185,10 +185,13 @@ export default function AthleteRegistrationPage() {
             // Success! Show bib number briefly, then redirect
             setBibNumber(result.bibNumber);
 
-            // Redirect after showing bib number for 3 seconds
+            // Refresh the router to ensure the athletes list will be fresh when we redirect
+            router.refresh();
+
+            // Redirect after showing bib number for 2 seconds
             setTimeout(() => {
                 router.push('/admin/athletes');
-            }, 3000);
+            }, 2000);
 
         } catch (err: any) {
             setApiError(err.message || 'An unexpected error occurred. Please try again.');
