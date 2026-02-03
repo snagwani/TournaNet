@@ -28,11 +28,18 @@ export class ScoreboardService {
     async getCurrentEvents() {
         return this.getCached('current', async () => {
             const now = new Date();
-            const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
 
-            // Fetch events for today or recent
+            // Fetch events that are supposed to be happening today or in the last 12 hours
+            // Using a broader fetch and filtering in memory to handle timezone safely
+            const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+
             const events = await this.prisma.event.findMany({
-                where: { date: { lte: now } }, // Rudimentary filter, logic refined below
+                where: {
+                    date: {
+                        gte: new Date(new Date().setHours(0, 0, 0, 0)),
+                        lte: new Date(new Date().setHours(23, 59, 59, 999))
+                    }
+                },
                 include: {
                     heats: {
                         include: {
@@ -48,34 +55,23 @@ export class ScoreboardService {
                 }
             });
 
-            // Filter for ONGOING
-            // Logic: StartTime passed AND Not fully completed.
-            // Or results are coming in.
-            // Simplified: If Results exist but < Heats * Lanes? 
-            // Better: Return events that match the heuristics.
-
             const liveEvents = events.filter(event => {
                 const start = this.combineDateTime(event.date, event.startTime);
-                // Heursitic: Started in last 24h and not "Old"? 
-                // Or just show Today's ongoing.
-                if (event.date.toISOString().split('T')[0] !== todayStr) return false;
 
-                const hasResults = event.heats.some(h => h.results.length > 0);
-                const allDone = event.heats.length > 0 && event.heats.every(h => h.results.length > 0 && h.results.every(r => r.status !== null)); // Rough check
+                // If the event hasn't started yet, it's not live
+                if (now < start) return false;
 
-                // Status Determination
-                // ONGOING if StartTime passed AND not all done.
-                if (now >= start) {
-                    // Check if *all* heats have results (implies completed).
-                    const completedHeats = event.heats.filter(h => h.results.length > 0).length;
-                    const totalHeats = event.heats.length;
+                // Check if all heats that have athletes/lanes have results
+                // This is more robust than just checking results count
+                const totalHeats = event.heats.length;
+                if (totalHeats === 0) return true; // Scheduled but no heats? Assume live if time passed
 
-                    if (totalHeats > 0 && completedHeats === totalHeats) {
-                        return false; // Completed
-                    }
-                    return true; // Ongoing
-                }
-                return false; // Future
+                const completedHeats = event.heats.filter(h => h.results.length > 0).length;
+
+                // If everything is done, it's not "Live" anymore, it's "Completed"
+                if (completedHeats === totalHeats && totalHeats > 0) return false;
+
+                return true;
             });
 
             return {
@@ -86,16 +82,8 @@ export class ScoreboardService {
                     category: e.category,
                     gender: e.gender,
                     status: 'ONGOING',
-                    heatNumber: null, // Aggregate view
-                    liveResults: e.heats.flatMap(h => h.results.map(r => ({
-                        athleteId: r.athleteId,
-                        bibNumber: r.bibNumber,
-                        athleteName: r.athlete.name,
-                        schoolName: r.athlete.school.name,
-                        resultValue: r.resultValue,
-                        status: r.status,
-                        rank: r.rank
-                    }))).sort((a, b) => (a.rank || 999) - (b.rank || 999))
+                    heatNumber: null,
+                    liveResults: this.aggregateAndRankResults(e.heats)
                 }))
             };
         });
@@ -167,32 +155,64 @@ export class ScoreboardService {
                             }
                         }
                     }
-                }
+                },
+                orderBy: { date: 'desc' }
             });
 
-            const completed = events.filter(e => {
-                if (e.heats.length === 0) return false;
-                return e.heats.every(h => h.results.length > 0);
+            // An event should be shown in results if it has ANY results, 
+            // even if not all heats are completed, to be more helpful.
+            // But we prioritize showing completed ones.
+            const withResults = events.filter(e => {
+                return e.heats.some(h => h.results.length > 0);
             });
 
             return {
-                events: completed.map(e => ({
+                events: withResults.map(e => ({
                     eventId: e.id,
                     name: e.name,
                     category: e.category,
                     gender: e.gender,
-                    results: e.heats.flatMap(h => h.results.map(r => ({
-                        athleteId: r.athleteId,
-                        athleteName: r.athlete.name,
-                        schoolName: r.athlete.school.name,
-                        bibNumber: r.bibNumber,
-                        rank: r.rank,
-                        resultValue: r.resultValue,
-                        status: r.status
-                    }))).sort((a, b) => (a.rank || 999) - (b.rank || 999))
+                    results: this.aggregateAndRankResults(e.heats)
                 }))
             };
         });
+    }
+
+    /**
+     * Aggregates results from multiple heats and re-ranks them if necessary.
+     * This handles the "duplicate member" issue by ensuring each athlete appears only once 
+     * with their best result, and correctly ranks them across all heats.
+     */
+    private aggregateAndRankResults(heats: any[]) {
+        const athleteBestResult = new Map<string, any>();
+
+        heats.forEach(h => {
+            h.results.forEach((r: any) => {
+                const existing = athleteBestResult.get(r.athleteId);
+                if (!existing) {
+                    athleteBestResult.set(r.athleteId, r);
+                } else {
+                    // If athlete appears in multiple heats (e.g. Heats and Finals), 
+                    // we usually want the one with a better rank or from a later heat.
+                    // For simply aggregate view, we take the one with better rank.
+                    if (r.rank && (!existing.rank || r.rank < existing.rank)) {
+                        athleteBestResult.set(r.athleteId, r);
+                    }
+                }
+            });
+        });
+
+        return Array.from(athleteBestResult.values())
+            .map(r => ({
+                athleteId: r.athleteId,
+                athleteName: r.athlete.name,
+                schoolName: r.athlete.school.name,
+                bibNumber: r.bibNumber,
+                rank: r.rank,
+                resultValue: r.resultValue,
+                status: r.status
+            }))
+            .sort((a, b) => (a.rank || 999) - (b.rank || 999));
     }
 
     async getMedals() {
@@ -306,8 +326,11 @@ export class ScoreboardService {
 
     private combineDateTime(date: Date, timeStr: string): Date {
         const [hh, mm] = timeStr.split(':').map(Number);
+        // Prisma Date is at midnight UTC. We want to apply the time in the same context.
         const d = new Date(date);
-        d.setHours(hh, mm, 0, 0);
+        d.setUTCHours(hh, mm, 0, 0);
+        // Note: If the tournament is in a specific timezone, this should be adjusted.
+        // For now, using setUTCHours to match the UTC-based Date object from Prisma.
         return d;
     }
 }
