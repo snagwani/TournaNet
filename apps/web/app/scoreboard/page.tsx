@@ -43,11 +43,21 @@ interface ScoreboardResultEvent {
     results: ScoreboardResult[];
 }
 
+interface MedalTallySchool {
+    schoolId: string;
+    schoolName: string;
+    gold: number;
+    silver: number;
+    bronze: number;
+    points: number;
+}
+
 export default function ScoreboardPage() {
     const [activeTab, setActiveTab] = useState<TabType>('current');
     const [liveEvents, setLiveEvents] = useState<ScoreboardEvent[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<ScoreboardUpcomingEvent[]>([]);
     const [resultEvents, setResultEvents] = useState<ScoreboardResultEvent[]>([]);
+    const [medalTallySchools, setMedalTallySchools] = useState<MedalTallySchool[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +115,21 @@ export default function ScoreboardPage() {
         }
     }, []);
 
+    const fetchMedalTally = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('http://localhost:3001/api/scoreboard/medals');
+            if (!response.ok) throw new Error('Failed to fetch medal tally');
+            const data = await response.json();
+            setMedalTallySchools(data.schools || []);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (activeTab === 'current') {
             fetchLiveEvents();
@@ -114,8 +139,10 @@ export default function ScoreboardPage() {
             fetchUpcomingEvents();
         } else if (activeTab === 'results') {
             fetchResults();
+        } else if (activeTab === 'tally') {
+            fetchMedalTally();
         }
-    }, [activeTab, fetchLiveEvents, fetchUpcomingEvents, fetchResults]);
+    }, [activeTab, fetchLiveEvents, fetchUpcomingEvents, fetchResults, fetchMedalTally]);
 
     const renderCurrentEvents = () => {
         if (isLoading) {
@@ -400,6 +427,162 @@ export default function ScoreboardPage() {
         );
     };
 
+    const renderMedalTally = () => {
+        if (isLoading) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 animate-pulse space-y-4">
+                    <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                    <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em]">Calculating Standings...</p>
+                </div>
+            );
+        }
+
+        if (medalTallySchools.length === 0) {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
+                        <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
+                            <span className="text-2xl">📊</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No Medal Data Yet</h3>
+                        <p className="text-neutral-500 max-w-sm mx-auto">
+                            School standings will appear here as events are completed and medals are awarded.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <header className="text-center space-y-3">
+                    <div className="flex justify-center items-center gap-3">
+                        <div className="h-px w-16 bg-gradient-to-r from-transparent to-neutral-800" />
+                        <span className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.3em]">
+                            Overall Standings
+                        </span>
+                        <div className="h-px w-16 bg-gradient-to-l from-transparent to-neutral-800" />
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-black text-white italic uppercase tracking-tighter">
+                        Medal Tally
+                    </h2>
+                    <p className="text-xs text-neutral-500 font-mono uppercase tracking-widest">
+                        Ranked by: Gold → Silver → Bronze → Points
+                    </p>
+                </header>
+
+                <div className="bg-neutral-950/50 border border-neutral-900 rounded-[2.5rem] overflow-hidden backdrop-blur-md shadow-2xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-neutral-900/40 border-b border-neutral-800/50">
+                                    <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500">Rank</th>
+                                    <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500">School</th>
+                                    <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-center">🥇 Gold</th>
+                                    <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-center">🥈 Silver</th>
+                                    <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-center">🥉 Bronze</th>
+                                    <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-right">Total Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {medalTallySchools.map((school, index) => {
+                                    const rank = index + 1;
+                                    const isPodium = rank <= 3;
+                                    const isChampion = rank === 1;
+
+                                    return (
+                                        <tr key={school.schoolId} className={`
+                                            border-b border-neutral-900/50 transition-all
+                                            ${isChampion ? 'bg-yellow-500/[0.05]' : isPodium ? 'bg-neutral-800/20' : 'hover:bg-white/[0.02]'}
+                                        `}>
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`
+                                                        flex items-center justify-center w-10 h-10 rounded-xl font-black italic text-lg
+                                                        ${rank === 1 ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' :
+                                                            rank === 2 ? 'bg-neutral-400 text-black shadow-[0_0_20px_rgba(163,163,163,0.2)]' :
+                                                                rank === 3 ? 'bg-amber-600 text-black shadow-[0_0_20px_rgba(217,119,6,0.2)]' :
+                                                                    'bg-neutral-900 text-neutral-500 border border-neutral-800'}
+                                                    `}>
+                                                        {rank}
+                                                    </span>
+                                                    {rank === 1 && <span className="text-2xl">🏆</span>}
+                                                    {rank === 2 && <span className="text-xl">🥈</span>}
+                                                    {rank === 3 && <span className="text-xl">🥉</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <span className={`
+                                                    text-base font-bold uppercase italic tracking-tight
+                                                    ${isPodium ? 'text-white' : 'text-neutral-400'}
+                                                `}>
+                                                    {school.schoolName}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <span className={`
+                                                    inline-flex items-center justify-center min-w-[3rem] px-3 py-2 rounded-lg font-black text-lg
+                                                    ${school.gold > 0 ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'text-neutral-700'}
+                                                `}>
+                                                    {school.gold}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <span className={`
+                                                    inline-flex items-center justify-center min-w-[3rem] px-3 py-2 rounded-lg font-black text-lg
+                                                    ${school.silver > 0 ? 'bg-neutral-400/10 text-neutral-400 border border-neutral-400/20' : 'text-neutral-700'}
+                                                `}>
+                                                    {school.silver}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <span className={`
+                                                    inline-flex items-center justify-center min-w-[3rem] px-3 py-2 rounded-lg font-black text-lg
+                                                    ${school.bronze > 0 ? 'bg-amber-600/10 text-amber-600 border border-amber-600/20' : 'text-neutral-700'}
+                                                `}>
+                                                    {school.bronze}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <span className={`
+                                                    text-2xl font-black italic tracking-tighter
+                                                    ${isPodium ? 'text-white' : 'text-neutral-500'}
+                                                `}>
+                                                    {school.points}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex justify-center">
+                    <div className="inline-flex items-center gap-6 px-6 py-3 bg-neutral-900/50 border border-neutral-800 rounded-2xl">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-neutral-500 font-mono uppercase tracking-widest">Points:</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-yellow-500">🥇</span>
+                            <span className="text-xs text-neutral-400 font-bold">= 10</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-neutral-400">🥈</span>
+                            <span className="text-xs text-neutral-400 font-bold">= 8</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-amber-600">🥉</span>
+                            <span className="text-xs text-neutral-400 font-bold">= 6</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderContent = () => {
         switch (activeTab) {
             case 'current':
@@ -409,19 +592,7 @@ export default function ScoreboardPage() {
             case 'results':
                 return renderResults();
             case 'tally':
-                return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
-                            <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
-                                <span className="text-2xl">📊</span>
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">School Standings</h3>
-                            <p className="text-neutral-500 max-w-sm mx-auto">
-                                Overall points and medal counts for all participating schools.
-                            </p>
-                        </div>
-                    </div>
-                );
+                return renderMedalTally();
             case 'search':
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
