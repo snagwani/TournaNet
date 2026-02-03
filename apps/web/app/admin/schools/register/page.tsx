@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface SchoolFormData {
     schoolName: string;
@@ -20,6 +21,7 @@ interface FormErrors {
 }
 
 export default function SchoolRegistrationPage() {
+    const router = useRouter();
     const [formData, setFormData] = useState<SchoolFormData>({
         schoolName: '',
         district: '',
@@ -60,11 +62,12 @@ export default function SchoolRegistrationPage() {
             newErrors.contactEmail = 'Please enter a valid email address';
         }
 
-        // Phone validation
-        if (!formData.contactPhone.trim()) {
-            newErrors.contactPhone = 'Contact phone is required';
-        } else if (!/^\+?[\d\s\-()]{10,}$/.test(formData.contactPhone)) {
-            newErrors.contactPhone = 'Please enter a valid phone number';
+        // Phone validation (optional, but must be valid if provided)
+        if (formData.contactPhone.trim()) {
+            // Backend pattern: /^[\d\s\-\+\(\)]+$/
+            if (!/^[\d\s\-\+\(\)]+$/.test(formData.contactPhone)) {
+                newErrors.contactPhone = 'Phone must contain only digits, spaces, dashes, plus signs, or parentheses';
+            }
         }
 
         setErrors(newErrors);
@@ -154,14 +157,8 @@ export default function SchoolRegistrationPage() {
 
             const result = await response.json();
 
-            // Success! Clear form and show success message
-            setSuccessMessage(`School "${formData.schoolName}" has been successfully registered!`);
-            handleReset();
-
-            // Auto-hide success message after 5 seconds
-            setTimeout(() => {
-                setSuccessMessage(null);
-            }, 5000);
+            // Success! Redirect to Schools list
+            router.push('/admin/schools');
 
         } catch (err: any) {
             setApiError(err.message || 'An unexpected error occurred. Please try again.');
@@ -353,7 +350,7 @@ export default function SchoolRegistrationPage() {
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                     Contact Phone
-                                    <span className="text-red-500">*</span>
+                                    <span className="text-neutral-600 text-[9px] normal-case font-normal">(Optional)</span>
                                 </label>
                                 <input
                                     type="tel"

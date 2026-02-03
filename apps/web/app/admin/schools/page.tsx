@@ -19,11 +19,14 @@ export default function SchoolsReportPage() {
     const [schools, setSchools] = useState<SchoolPerformance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { accessToken } = useAuth();
+    const { user } = useAuth();
     const router = useRouter();
 
     const fetchSchools = useCallback(async () => {
-        if (!accessToken) return;
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
 
         setIsLoading(true);
         setError(null);
@@ -54,7 +57,7 @@ export default function SchoolsReportPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [accessToken]);
+    }, [user]);
 
     useEffect(() => {
         fetchSchools();
@@ -72,6 +75,15 @@ export default function SchoolsReportPage() {
                     </p>
                 </div>
                 <div className="flex gap-3">
+                    <button
+                        onClick={() => router.push('/admin/schools/register')}
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 border border-blue-500 rounded-xl text-[10px] font-bold text-white uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20"
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Register New School
+                    </button>
                     <button
                         onClick={() => fetchSchools()}
                         disabled={isLoading}
