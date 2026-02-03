@@ -91,6 +91,7 @@ export class AdminService {
             return {
                 schoolId: s.id,
                 schoolName: s.name,
+                district: s.district,
                 athletesCount: s.athletes.length,
                 eventsParticipated: eventIds.size,
                 gold,

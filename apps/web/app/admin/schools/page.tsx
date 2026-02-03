@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 interface SchoolPerformance {
     schoolId: string;
     schoolName: string;
+    district: string;
     athletesCount: number;
     eventsParticipated: number;
     gold: number;
@@ -19,6 +20,9 @@ export default function SchoolsReportPage() {
     const [schools, setSchools] = useState<SchoolPerformance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedDistrict, setSelectedDistrict] = useState('');
+
     const { user } = useAuth();
     const router = useRouter();
 
@@ -63,6 +67,16 @@ export default function SchoolsReportPage() {
         fetchSchools();
     }, [fetchSchools]);
 
+    // Derived state for districts
+    const districts = Array.from(new Set(schools.map(s => s.district))).sort();
+
+    // Filtering logic
+    const filteredSchools = schools.filter(school => {
+        const matchesSearch = school.schoolName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesDistrict = selectedDistrict === '' || school.district === selectedDistrict;
+        return matchesSearch && matchesDistrict;
+    });
+
     return (
         <main className="p-8 space-y-8">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-6 gap-4">
@@ -74,7 +88,7 @@ export default function SchoolsReportPage() {
                         Tournament Analytics • Points Standing
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => router.push('/admin/schools/register')}
                         className="px-6 py-2 bg-blue-600 hover:bg-blue-500 border border-blue-500 rounded-xl text-[10px] font-bold text-white uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20"
@@ -100,6 +114,40 @@ export default function SchoolsReportPage() {
                 </div>
             </header>
 
+            {/* Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-neutral-900/20 p-4 rounded-3xl border border-neutral-800/50">
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest ml-1">Search Schools</label>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Enter school name..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-10 py-2.5 text-xs text-white focus:outline-none focus:border-neutral-700 transition-colors"
+                        />
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-600">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest ml-1">District / City</label>
+                    <select
+                        value={selectedDistrict}
+                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neutral-700 transition-colors appearance-none cursor-pointer"
+                    >
+                        <option value="">All Districts</option>
+                        {districts.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             {error && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-4 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-center gap-3">
@@ -123,8 +171,8 @@ export default function SchoolsReportPage() {
                         <thead>
                             <tr className="bg-neutral-900/50 border-b border-neutral-800">
                                 <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500">School Name</th>
+                                <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">District</th>
                                 <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Athletes</th>
-                                <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Events</th>
                                 <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Gold</th>
                                 <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Silver</th>
                                 <th className="px-6 py-5 text-xs font-mono uppercase tracking-widest text-neutral-500 text-center">Bronze</th>
@@ -139,7 +187,7 @@ export default function SchoolsReportPage() {
                                             <div className="h-4 w-48 bg-neutral-800/50 animate-pulse rounded-full" />
                                         </td>
                                         <td className="px-6 py-6">
-                                            <div className="h-4 w-12 bg-neutral-800/50 animate-pulse rounded-full mx-auto" />
+                                            <div className="h-4 w-24 bg-neutral-800/50 animate-pulse rounded-full mx-auto" />
                                         </td>
                                         <td className="px-6 py-6">
                                             <div className="h-4 w-12 bg-neutral-800/50 animate-pulse rounded-full mx-auto" />
@@ -158,7 +206,7 @@ export default function SchoolsReportPage() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : schools.length === 0 ? (
+                            ) : filteredSchools.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-24 text-center">
                                         <div className="flex flex-col items-center space-y-4">
@@ -168,17 +216,17 @@ export default function SchoolsReportPage() {
                                                 </svg>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-white font-bold text-lg">No Schools Data Available</p>
+                                                <p className="text-white font-bold text-lg">No Matching Schools</p>
                                                 <p className="text-neutral-500 text-sm max-w-xs mx-auto">
-                                                    The performance report will be populated once event results are submitted.
+                                                    Try adjusting your filters to find the school you're looking for.
                                                 </p>
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
                             ) : (
-                                schools.map((school, index) => {
-                                    const isFirst = index === 0;
+                                filteredSchools.map((school, index) => {
+                                    const isFirst = index === 0 && searchQuery === '' && selectedDistrict === '';
                                     return (
                                         <tr
                                             key={school.schoolId}
@@ -199,10 +247,10 @@ export default function SchoolsReportPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-6 text-center">
-                                                <span className="text-neutral-500 font-mono text-xs">{school.athletesCount}</span>
+                                                <span className="text-neutral-500 text-xs font-bold uppercase tracking-wider">{school.district}</span>
                                             </td>
                                             <td className="px-6 py-6 text-center">
-                                                <span className="text-neutral-400 font-mono text-sm">{school.eventsParticipated}</span>
+                                                <span className="text-neutral-500 font-mono text-xs">{school.athletesCount}</span>
                                             </td>
                                             <td className="px-6 py-6 text-center">
                                                 <div className="flex flex-col items-center gap-1">
@@ -247,7 +295,7 @@ export default function SchoolsReportPage() {
 
             <footer className="pt-8 border-t border-neutral-900 text-center">
                 <p className="text-[10px] text-neutral-700 uppercase tracking-[0.3em] font-medium">
-                    TournaNet Analytics Engine • Build 2026.02.02
+                    TournaNet Analytics Engine • Build 2026.02.04
                 </p>
             </footer>
         </main>
