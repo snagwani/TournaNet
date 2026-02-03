@@ -25,9 +25,20 @@ interface ScoreboardEvent {
     liveResults: ScoreboardResult[];
 }
 
+interface ScoreboardUpcomingEvent {
+    eventId: string;
+    name: string;
+    eventType: 'TRACK' | 'FIELD';
+    startTime: string;
+    venue: string | null;
+    category: string;
+    gender: string;
+}
+
 export default function ScoreboardPage() {
     const [activeTab, setActiveTab] = useState<TabType>('current');
     const [liveEvents, setLiveEvents] = useState<ScoreboardEvent[]>([]);
+    const [upcomingEvents, setUpcomingEvents] = useState<ScoreboardUpcomingEvent[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +65,32 @@ export default function ScoreboardPage() {
         }
     }, []);
 
+    const fetchUpcomingEvents = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('http://localhost:3001/api/scoreboard/upcoming?windowMinutes=240');
+            if (!response.ok) throw new Error('Failed to fetch upcoming events');
+            const data = await response.json();
+            // Backend already sorts by date/time, but we'll ensure it here too
+            const sorted = (data.events || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+            setUpcomingEvents(sorted);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (activeTab === 'current') {
             fetchLiveEvents();
             const interval = setInterval(() => fetchLiveEvents(true), 30000);
             return () => clearInterval(interval);
+        } else if (activeTab === 'upcoming') {
+            fetchUpcomingEvents();
         }
-    }, [activeTab, fetchLiveEvents]);
+    }, [activeTab, fetchLiveEvents, fetchUpcomingEvents]);
 
     const renderCurrentEvents = () => {
         if (isLoading) {
@@ -179,24 +209,73 @@ export default function ScoreboardPage() {
         );
     };
 
+    const renderUpcomingEvents = () => {
+        if (isLoading) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 animate-pulse space-y-4">
+                    <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                    <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em]">Fetching Schedule...</p>
+                </div>
+            );
+        }
+
+        if (upcomingEvents.length === 0) {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
+                        <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
+                            <span className="text-2xl">📅</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No Upcoming Events</h3>
+                        <p className="text-neutral-500 max-w-sm mx-auto">
+                            There are no more events scheduled for the current session window.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {upcomingEvents.map((event) => (
+                    <article key={event.eventId} className="bg-neutral-900/40 border border-neutral-800 p-6 rounded-[2rem] hover:bg-neutral-900/60 transition-all group">
+                        <div className="flex justify-between items-start gap-4">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase border ${event.eventType === 'TRACK' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                                        {event.eventType}
+                                    </span>
+                                    <span className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
+                                        {event.category} • {event.gender}
+                                    </span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white uppercase italic group-hover:text-emerald-400 transition-colors">
+                                    {event.name}
+                                </h3>
+                                {event.venue && (
+                                    <div className="flex items-center gap-2 text-neutral-500">
+                                        <span className="text-xs">📍</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">{event.venue}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">Starts At</p>
+                                <p className="text-2xl font-black italic text-white tracking-tight">{event.startTime}</p>
+                            </div>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        );
+    };
+
     const renderContent = () => {
         switch (activeTab) {
             case 'current':
                 return renderCurrentEvents();
             case 'upcoming':
-                return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
-                            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
-                                <span className="text-2xl">📅</span>
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Next Up</h3>
-                            <p className="text-neutral-500 max-w-sm mx-auto">
-                                Stay tuned for the upcoming schedule of events and heat assignments.
-                            </p>
-                        </div>
-                    </div>
-                );
+                return renderUpcomingEvents();
             case 'results':
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
