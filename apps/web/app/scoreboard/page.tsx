@@ -35,10 +35,19 @@ interface ScoreboardUpcomingEvent {
     gender: string;
 }
 
+interface ScoreboardResultEvent {
+    eventId: string;
+    name: string;
+    category: string;
+    gender: string;
+    results: ScoreboardResult[];
+}
+
 export default function ScoreboardPage() {
     const [activeTab, setActiveTab] = useState<TabType>('current');
     const [liveEvents, setLiveEvents] = useState<ScoreboardEvent[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<ScoreboardUpcomingEvent[]>([]);
+    const [resultEvents, setResultEvents] = useState<ScoreboardResultEvent[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -72,9 +81,23 @@ export default function ScoreboardPage() {
             const response = await fetch('http://localhost:3001/api/scoreboard/upcoming?windowMinutes=240');
             if (!response.ok) throw new Error('Failed to fetch upcoming events');
             const data = await response.json();
-            // Backend already sorts by date/time, but we'll ensure it here too
             const sorted = (data.events || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
             setUpcomingEvents(sorted);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const fetchResults = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('http://localhost:3001/api/scoreboard/results');
+            if (!response.ok) throw new Error('Failed to fetch results');
+            const data = await response.json();
+            setResultEvents(data.events || []);
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
         } finally {
@@ -89,8 +112,10 @@ export default function ScoreboardPage() {
             return () => clearInterval(interval);
         } else if (activeTab === 'upcoming') {
             fetchUpcomingEvents();
+        } else if (activeTab === 'results') {
+            fetchResults();
         }
-    }, [activeTab, fetchLiveEvents, fetchUpcomingEvents]);
+    }, [activeTab, fetchLiveEvents, fetchUpcomingEvents, fetchResults]);
 
     const renderCurrentEvents = () => {
         if (isLoading) {
@@ -227,7 +252,7 @@ export default function ScoreboardPage() {
                             <span className="text-2xl">📅</span>
                         </div>
                         <h3 className="text-xl font-bold text-white mb-2">No Upcoming Events</h3>
-                        <p className="text-neutral-500 max-w-sm mx-auto">
+                        <p className="text-neutral-500 max-sm mx-auto">
                             There are no more events scheduled for the current session window.
                         </p>
                     </div>
@@ -270,6 +295,111 @@ export default function ScoreboardPage() {
         );
     };
 
+    const renderResults = () => {
+        if (isLoading) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 animate-pulse space-y-4">
+                    <div className="w-12 h-12 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+                    <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em]">Archiving Champions...</p>
+                </div>
+            );
+        }
+
+        if (resultEvents.length === 0) {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
+                        <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
+                            <span className="text-2xl">🏆</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No Results Yet</h3>
+                        <p className="text-neutral-500 max-w-sm mx-auto">
+                            Verified results will appear here as soon as events are finalized.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {resultEvents.map((event) => (
+                    <article key={event.eventId} className="space-y-8">
+                        <header className="text-center space-y-2">
+                            <div className="flex justify-center items-center gap-3">
+                                <div className="h-px w-12 bg-gradient-to-r from-transparent to-neutral-800" />
+                                <span className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.3em]">
+                                    {event.category} • {event.gender}
+                                </span>
+                                <div className="h-px w-12 bg-gradient-to-l from-transparent to-neutral-800" />
+                            </div>
+                            <h2 className="text-3xl md:text-4xl font-black text-white italic uppercase tracking-tighter">
+                                {event.name}
+                            </h2>
+                        </header>
+
+                        <div className="bg-neutral-950/50 border border-neutral-900 rounded-[2.5rem] overflow-hidden backdrop-blur-md shadow-2xl">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-neutral-900/40 border-b border-neutral-800/50">
+                                            <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500">Final Rank</th>
+                                            <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500">Athlete</th>
+                                            <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500">School</th>
+                                            <th className="px-8 py-6 text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-right">Official Time/Mark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {event.results.map((result) => (
+                                            <tr key={result.athleteId} className={`
+                                                border-b border-neutral-900/50 transition-colors
+                                                ${result.rank === 1 ? 'bg-yellow-500/[0.03]' : ''}
+                                            `}>
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className={`
+                                                            flex items-center justify-center w-10 h-10 rounded-xl font-black italic text-lg
+                                                            ${result.rank === 1 ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' :
+                                                                result.rank === 2 ? 'bg-neutral-400 text-black shadow-[0_0_20px_rgba(163,163,163,0.2)]' :
+                                                                    result.rank === 3 ? 'bg-amber-600 text-black shadow-[0_0_20px_rgba(217,119,6,0.2)]' :
+                                                                        'bg-neutral-900 text-neutral-500 border border-neutral-800'}
+                                                        `}>
+                                                            {result.rank}
+                                                        </span>
+                                                        {result.rank === 1 && <span className="text-xl">🥇</span>}
+                                                        {result.rank === 2 && <span className="text-xl">🥈</span>}
+                                                        {result.rank === 3 && <span className="text-xl">🥉</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-base font-bold text-white uppercase italic">{result.athleteName}</p>
+                                                        <p className="text-[10px] font-mono text-neutral-600 uppercase tracking-widest">Bib #{result.bibNumber}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest">{result.schoolName}</span>
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <span className={`
+                                                        text-xl font-black italic tracking-tighter
+                                                        ${result.rank && result.rank <= 3 ? 'text-white' : 'text-neutral-400'}
+                                                    `}>
+                                                        {result.resultValue || (result.status ? <span className="text-xs uppercase not-italic font-bold">{result.status}</span> : '—')}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        );
+    };
+
     const renderContent = () => {
         switch (activeTab) {
             case 'current':
@@ -277,19 +407,7 @@ export default function ScoreboardPage() {
             case 'upcoming':
                 return renderUpcomingEvents();
             case 'results':
-                return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
-                            <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
-                                <span className="text-2xl">🏆</span>
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Hall of Fame</h3>
-                            <p className="text-neutral-500 max-w-sm mx-auto">
-                                Final standings and verified results for completed events will be archived here.
-                            </p>
-                        </div>
-                    </div>
-                );
+                return renderResults();
             case 'tally':
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

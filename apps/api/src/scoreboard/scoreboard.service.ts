@@ -158,20 +158,19 @@ export class ScoreboardService {
                     heats: {
                         include: {
                             results: {
-                                include: { athlete: true },
+                                include: {
+                                    athlete: {
+                                        include: { school: true }
+                                    }
+                                },
                                 orderBy: { rank: 'asc' }
                             }
                         }
                     }
                 }
-                // We want completed events only.
-                // Filter in memory for "Completed" status (Has results)
             });
 
             const completed = events.filter(e => {
-                // Must have heats and all heats must have results? 
-                // Or just any results? "Show completed events".
-                // Strict: All generated heats have results.
                 if (e.heats.length === 0) return false;
                 return e.heats.every(h => h.results.length > 0);
             });
@@ -185,13 +184,14 @@ export class ScoreboardService {
                     results: e.heats.flatMap(h => h.results.map(r => ({
                         athleteId: r.athleteId,
                         athleteName: r.athlete.name,
+                        schoolName: r.athlete.school.name,
                         bibNumber: r.bibNumber,
                         rank: r.rank,
                         resultValue: r.resultValue,
                         status: r.status
                     }))).sort((a, b) => (a.rank || 999) - (b.rank || 999))
                 }))
-            }
+            };
         });
     }
 
