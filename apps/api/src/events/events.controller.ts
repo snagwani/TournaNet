@@ -1,6 +1,7 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Query, Param, Body, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { EventDto } from './dto/event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -9,11 +10,38 @@ import { UserRole } from '@prisma/client';
 
 @Controller('events')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
 export class EventsController {
     constructor(private readonly eventsService: EventsService) { }
 
+    @Get()
+    @Roles(UserRole.ADMIN, UserRole.SCORER)
+    async findAll(@Query('date') date?: string): Promise<EventDto[]> {
+        return this.eventsService.findAll(date);
+    }
+
+    @Get(':id')
+    @Roles(UserRole.ADMIN, UserRole.SCORER)
+    async findOne(@Param('id') id: string) {
+        return this.eventsService.findOne(id);
+    }
+
+    @Patch(':id')
+    @Roles(UserRole.ADMIN, UserRole.SCORER)
+    @UsePipes(new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        errorHttpStatusCode: 422
+    }))
+    async update(
+        @Param('id') id: string,
+        @Body() dto: UpdateEventDto
+    ): Promise<EventDto> {
+        return this.eventsService.update(id, dto);
+    }
+
     @Post()
+    @Roles(UserRole.ADMIN)
     @UsePipes(new ValidationPipe({
         transform: true,
         whitelist: true,

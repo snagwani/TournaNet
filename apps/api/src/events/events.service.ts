@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { EventDto } from './dto/event.dto';
 import { Prisma, EventType } from '@prisma/client';
 
@@ -9,6 +10,84 @@ export class EventsService {
     private readonly logger = new Logger(EventsService.name);
 
     constructor(private readonly prisma: PrismaService) { }
+
+    async findAll(date?: string): Promise<EventDto[]> {
+        const where: Prisma.EventWhereInput = {};
+        if (date) {
+            where.date = new Date(date);
+        }
+
+        const events = await this.prisma.event.findMany({
+            where,
+            orderBy: [
+                { date: 'asc' },
+                { startTime: 'asc' }
+            ],
+            include: {
+                heats: {
+                    select: {
+                        id: true,
+                        heatNumber: true,
+                        _count: {
+                            select: { results: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        return events.map(e => new EventDto(e));
+    }
+
+    async findOne(id: string) {
+        const event = await this.prisma.event.findUnique({
+            where: { id },
+            include: {
+                heats: {
+                    include: {
+                        lanes: {
+                            include: {
+                                athlete: {
+                                    include: { school: true }
+                                }
+                            }
+                        },
+                        results: true
+                    },
+                    orderBy: { heatNumber: 'asc' }
+                }
+            }
+        });
+
+        if (!event) {
+            throw new BadRequestException('Event not found');
+        }
+
+        return event;
+    }
+
+    async update(id: string, dto: UpdateEventDto): Promise<EventDto> {
+        this.logger.log(`Updating event: ${id}`);
+
+        if (dto.startTime) {
+            this.validateTime(dto.startTime);
+        }
+
+        try {
+            const event = await this.prisma.event.update({
+                where: { id },
+                data: {
+                    ...dto,
+                    date: dto.date ? new Date(dto.date) : undefined
+                },
+            });
+
+            return new EventDto(event);
+        } catch (error) {
+            this.logger.error(`Failed to update event: ${error instanceof Error ? error.message : 'Unknown'}`);
+            throw new InternalServerErrorException('Failed to update event');
+        }
+    }
 
     async create(createEventDto: CreateEventDto): Promise<EventDto> {
         this.logger.log(`Creating event: ${createEventDto.name} (${createEventDto.eventType})`);
