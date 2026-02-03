@@ -43,6 +43,9 @@ export class AthletesService {
             throw new BadRequestException('School not found');
         }
 
+        // Log exact values for debugging duplicate issues
+        this.logger.log(`Attempting to create athlete with exact values: name="${createAthleteDto.name}", age=${createAthleteDto.age} (type: ${typeof createAthleteDto.age}), schoolId="${createAthleteDto.schoolId}"`);
+
         try {
             const athlete = await this.prisma.athlete.create({
                 data: {
@@ -63,7 +66,9 @@ export class AthletesService {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 // Duplicate constraint violation (name + age + schoolId)
                 if (error.code === 'P2002') {
-                    this.logger.warn(`Duplicate athlete: ${createAthleteDto.name} in school ${createAthleteDto.schoolId}`);
+                    // Log the exact fields that caused the duplicate
+                    const fields = (error.meta?.target as string[]) || [];
+                    this.logger.warn(`Duplicate athlete detected on fields: [${fields.join(', ')}]. Values: name="${createAthleteDto.name}", age=${createAthleteDto.age}, schoolId="${createAthleteDto.schoolId}"`);
                     throw new BadRequestException('Athlete with this name and age already registered for this school');
                 }
             }

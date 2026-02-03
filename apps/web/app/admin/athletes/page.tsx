@@ -114,19 +114,30 @@ export default function AthletesReportPage() {
                         Tournament Analytics • Athlete Statistics
                     </p>
                 </div>
-                {isFiltered && (
+                <div className="flex items-center gap-3">
                     <button
-                        onClick={clearFilters}
-                        className="text-[10px] text-neutral-500 hover:text-white uppercase tracking-[0.2em] font-bold transition-colors flex items-center gap-2 group bg-neutral-900/50 px-4 py-2 rounded-full border border-neutral-800/50 hover:border-neutral-700 animate-in fade-in slide-in-from-right-2"
+                        onClick={() => router.push('/admin/athletes/register')}
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 border border-blue-500 rounded-xl text-[10px] font-bold text-white uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20"
                     >
-                        <span className="w-5 h-5 rounded-full border border-neutral-800 flex items-center justify-center group-hover:border-neutral-600 transition-colors">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </span>
-                        Clear All Filters
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Register New Athlete
                     </button>
-                )}
+                    {isFiltered && (
+                        <button
+                            onClick={clearFilters}
+                            className="text-[10px] text-neutral-500 hover:text-white uppercase tracking-[0.2em] font-bold transition-colors flex items-center gap-2 group bg-neutral-900/50 px-4 py-2 rounded-full border border-neutral-800/50 hover:border-neutral-700 animate-in fade-in slide-in-from-right-2"
+                        >
+                            <span className="w-5 h-5 rounded-full border border-neutral-800 flex items-center justify-center group-hover:border-neutral-600 transition-colors">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </span>
+                            Clear All Filters
+                        </button>
+                    )}
+                </div>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-neutral-900/20 p-4 rounded-3xl border border-neutral-800/50">
