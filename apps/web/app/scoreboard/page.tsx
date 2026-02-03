@@ -52,12 +52,28 @@ interface MedalTallySchool {
     points: number;
 }
 
+interface AthleteSearchResult {
+    athleteId: string;
+    athleteName: string;
+    bibNumber: number;
+    schoolName: string;
+    events: {
+        eventName: string;
+        eventType: 'TRACK' | 'FIELD';
+        rank: number | null;
+        resultValue: string | null;
+        status: string | null;
+    }[];
+}
+
 export default function ScoreboardPage() {
     const [activeTab, setActiveTab] = useState<TabType>('current');
     const [liveEvents, setLiveEvents] = useState<ScoreboardEvent[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<ScoreboardUpcomingEvent[]>([]);
     const [resultEvents, setResultEvents] = useState<ScoreboardResultEvent[]>([]);
     const [medalTallySchools, setMedalTallySchools] = useState<MedalTallySchool[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<AthleteSearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -115,14 +131,34 @@ export default function ScoreboardPage() {
         }
     }, []);
 
-    const fetchMedalTally = useCallback(async () => {
-        setIsLoading(true);
+    const fetchMedalTally = useCallback(async (isSilent = false) => {
+        if (!isSilent) setIsLoading(true);
         setError(null);
         try {
             const response = await fetch('http://localhost:3001/api/scoreboard/medals');
             if (!response.ok) throw new Error('Failed to fetch medal tally');
             const data = await response.json();
             setMedalTallySchools(data.schools || []);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            if (!isSilent) setIsLoading(false);
+        }
+    }, []);
+
+    const fetchAthleteSearch = useCallback(async (query: string) => {
+        if (!query.trim()) {
+            setSearchResults([]);
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`http://localhost:3001/api/scoreboard/athletes/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Failed to search athletes');
+            const data = await response.json();
+            setSearchResults(data.athletes || []);
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
         } finally {
@@ -141,8 +177,27 @@ export default function ScoreboardPage() {
             fetchResults();
         } else if (activeTab === 'tally') {
             fetchMedalTally();
+            const interval = setInterval(() => fetchMedalTally(true), 30000);
+            return () => clearInterval(interval);
+        } else if (activeTab === 'search') {
+            // Reset search when entering search tab
+            setSearchQuery('');
+            setSearchResults([]);
         }
     }, [activeTab, fetchLiveEvents, fetchUpcomingEvents, fetchResults, fetchMedalTally]);
+
+    // Debounced search effect
+    useEffect(() => {
+        if (activeTab !== 'search') return;
+
+        const timer = setTimeout(() => {
+            if (searchQuery) {
+                fetchAthleteSearch(searchQuery);
+            }
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, activeTab, fetchAthleteSearch]);
 
     const renderCurrentEvents = () => {
         if (isLoading) {
@@ -595,18 +650,133 @@ export default function ScoreboardPage() {
                 return renderMedalTally();
             case 'search':
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Search Input */}
                         <div className="relative">
                             <input
                                 type="text"
                                 placeholder="Search by name or bib number..."
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-12 py-4 text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl px-12 py-4 text-white placeholder:text-neutral-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                             />
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">🔍</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 text-xl">🔍</span>
+                            {searchQuery && (
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        setSearchResults([]);
+                                    }}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            )}
                         </div>
-                        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
-                            <p className="text-neutral-500">Start typing to find athletes and view their performance history.</p>
-                        </div>
+
+                        {/* Search Results */}
+                        {isLoading && searchQuery ? (
+                            <div className="flex flex-col items-center justify-center py-20 animate-pulse space-y-4">
+                                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                                <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em]">Searching...</p>
+                            </div>
+                        ) : searchQuery && searchResults.length === 0 && !isLoading ? (
+                            <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
+                                <div className="w-16 h-16 bg-neutral-800/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                    <span className="text-2xl">🔍</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">No Athletes Found</h3>
+                                <p className="text-neutral-500 max-w-sm mx-auto">
+                                    No athletes match "{searchQuery}". Try searching by name or bib number.
+                                </p>
+                            </div>
+                        ) : searchResults.length > 0 ? (
+                            <div className="space-y-6">
+                                {searchResults.map((athlete) => (
+                                    <article key={athlete.athleteId} className="bg-neutral-900/40 border border-neutral-800 rounded-[2rem] overflow-hidden hover:border-neutral-700 transition-all">
+                                        {/* Athlete Header */}
+                                        <div className="bg-neutral-900/60 border-b border-neutral-800 px-8 py-6">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-xs font-mono font-bold uppercase tracking-widest">
+                                                            Bib #{athlete.bibNumber}
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">
+                                                        {athlete.athleteName}
+                                                    </h3>
+                                                    <p className="text-sm text-neutral-500 font-bold uppercase tracking-widest">
+                                                        {athlete.schoolName}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-neutral-950/50 border border-neutral-800 rounded-xl">
+                                                    <span className="text-xs text-neutral-500 font-mono uppercase tracking-widest">
+                                                        {athlete.events.length} Event{athlete.events.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Event History */}
+                                        {athlete.events.length > 0 ? (
+                                            <div className="p-6">
+                                                <h4 className="text-xs text-neutral-500 font-mono uppercase tracking-widest mb-4">Event History</h4>
+                                                <div className="space-y-3">
+                                                    {athlete.events.map((event, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between p-4 bg-neutral-950/30 border border-neutral-800/50 rounded-xl hover:bg-neutral-950/50 transition-colors">
+                                                            <div className="flex items-center gap-4">
+                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase border ${event.eventType === 'TRACK' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                                                                    {event.eventType}
+                                                                </span>
+                                                                <span className="text-sm font-bold text-white">
+                                                                    {event.eventName}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                {event.rank && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`
+                                                                            flex items-center justify-center w-8 h-8 rounded-lg font-black italic text-sm
+                                                                            ${event.rank === 1 ? 'bg-yellow-500 text-black' :
+                                                                                event.rank === 2 ? 'bg-neutral-400 text-black' :
+                                                                                    event.rank === 3 ? 'bg-amber-600 text-black' :
+                                                                                        'bg-neutral-900 text-neutral-500 border border-neutral-800'}
+                                                                        `}>
+                                                                            {event.rank}
+                                                                        </span>
+                                                                        {event.rank === 1 && <span className="text-lg">🥇</span>}
+                                                                        {event.rank === 2 && <span className="text-lg">🥈</span>}
+                                                                        {event.rank === 3 && <span className="text-lg">🥉</span>}
+                                                                    </div>
+                                                                )}
+                                                                <span className="text-base font-black text-white italic tracking-tight min-w-[4rem] text-right">
+                                                                    {event.resultValue || (event.status ? <span className="text-xs text-neutral-500 uppercase not-italic font-bold">{event.status}</span> : '—')}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="p-8 text-center">
+                                                <p className="text-neutral-500 text-sm">No event results recorded yet.</p>
+                                            </div>
+                                        )}
+                                    </article>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
+                                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/20">
+                                    <span className="text-2xl">🔍</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Athlete Search</h3>
+                                <p className="text-neutral-500 max-w-sm mx-auto">
+                                    Start typing to find athletes and view their performance history.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 );
         }
