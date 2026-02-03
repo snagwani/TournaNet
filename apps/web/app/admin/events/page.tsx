@@ -68,9 +68,11 @@ export default function EventReportsPage() {
     }, [filters, sort]);
 
     useEffect(() => {
-        if (user) {
-            fetchEvents();
+        if (!user) {
+            setIsLoading(false);
+            return;
         }
+        fetchEvents();
     }, [user, fetchEvents]);
 
     const clearFilters = () => {

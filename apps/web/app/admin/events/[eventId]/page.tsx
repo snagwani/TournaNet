@@ -68,9 +68,11 @@ export default function EventDetailPage() {
     }, [eventId]);
 
     useEffect(() => {
-        if (user && eventId) {
-            fetchEventDetail();
+        if (!user || !eventId) {
+            setIsLoading(false);
+            return;
         }
+        fetchEventDetail();
     }, [user, eventId, fetchEventDetail]);
 
     return (

@@ -27,11 +27,6 @@ export default function SchoolsReportPage() {
     const router = useRouter();
 
     const fetchSchools = useCallback(async () => {
-        if (!user) {
-            setIsLoading(false);
-            return;
-        }
-
         setIsLoading(true);
         setError(null);
         try {
@@ -61,11 +56,15 @@ export default function SchoolsReportPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [user]);
+    }, []);
 
     useEffect(() => {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
         fetchSchools();
-    }, [fetchSchools]);
+    }, [user, fetchSchools]);
 
     // Derived state for districts
     const districts = Array.from(new Set(schools.map(s => s.district))).sort();

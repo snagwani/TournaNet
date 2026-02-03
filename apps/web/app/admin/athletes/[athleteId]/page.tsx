@@ -62,9 +62,11 @@ export default function AthleteDetailPage() {
     }, [athleteId]);
 
     useEffect(() => {
-        if (user && athleteId) {
-            fetchAthleteDetail();
+        if (!user || !athleteId) {
+            setIsLoading(false);
+            return;
         }
+        fetchAthleteDetail();
     }, [user, athleteId, fetchAthleteDetail]);
 
     if (isLoading) {
@@ -188,9 +190,9 @@ export default function AthleteDetailPage() {
                                                 <td className="px-6 py-6 text-center shadow-inner">
                                                     {e.rank ? (
                                                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs mx-auto ${e.rank === 1 ? 'bg-amber-500 text-black' :
-                                                                e.rank === 2 ? 'bg-neutral-300 text-black' :
-                                                                    e.rank === 3 ? 'bg-amber-700 text-white' :
-                                                                        'bg-neutral-800 text-neutral-400'
+                                                            e.rank === 2 ? 'bg-neutral-300 text-black' :
+                                                                e.rank === 3 ? 'bg-amber-700 text-white' :
+                                                                    'bg-neutral-800 text-neutral-400'
                                                             }`}>
                                                             {e.rank}
                                                         </span>
@@ -198,7 +200,7 @@ export default function AthleteDetailPage() {
                                                 </td>
                                                 <td className="px-6 py-6 text-right">
                                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold font-mono border ${e.status === 'FINISHED' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                                            'bg-red-500/10 border-red-500/20 text-red-400'
+                                                        'bg-red-500/10 border-red-500/20 text-red-400'
                                                         }`}>
                                                         {e.status}
                                                     </span>

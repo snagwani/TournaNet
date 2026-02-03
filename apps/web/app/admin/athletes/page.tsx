@@ -78,15 +78,16 @@ export default function AthletesReportPage() {
     }, [filters]);
 
     useEffect(() => {
-        if (user) {
-            fetchSchools();
-        }
+        if (!user) return;
+        fetchSchools();
     }, [user, fetchSchools]);
 
     useEffect(() => {
-        if (user) {
-            fetchAthletes();
+        if (!user) {
+            setIsLoading(false);
+            return;
         }
+        fetchAthletes();
     }, [user, fetchAthletes]);
 
     const handleFilterChange = (key: string, value: string) => {
@@ -114,7 +115,7 @@ export default function AthletesReportPage() {
                         Tournament Analytics • Athlete Statistics
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => router.push('/admin/athletes/register')}
                         className="px-6 py-2 bg-blue-600 hover:bg-blue-500 border border-blue-500 rounded-xl text-[10px] font-bold text-white uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20"
@@ -123,6 +124,16 @@ export default function AthletesReportPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                         Register New Athlete
+                    </button>
+                    <button
+                        onClick={() => fetchAthletes()}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-[10px] font-bold text-neutral-400 uppercase tracking-widest hover:text-white hover:border-neutral-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                    >
+                        <svg className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh Data
                     </button>
                     {isFiltered && (
                         <button
@@ -134,7 +145,7 @@ export default function AthletesReportPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </span>
-                            Clear All Filters
+                            Clear Filters
                         </button>
                     )}
                 </div>
@@ -285,7 +296,7 @@ export default function AthletesReportPage() {
 
             <footer className="pt-8 border-t border-neutral-900 text-center">
                 <p className="text-[10px] text-neutral-700 uppercase tracking-[0.3em] font-medium">
-                    TournaNet Analytics Engine • Build 2026.02.02
+                    TournaNet Analytics Engine • Build 2026.02.04
                 </p>
             </footer>
         </main>

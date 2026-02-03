@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -56,28 +56,29 @@ export default function AthleteRegistrationPage() {
         }
     }, [user, authLoading, router]);
 
+    const fetchSchools = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setSchools((data.schools || []).map((s: any) => ({
+                    id: s.schoolId,
+                    name: s.schoolName
+                })));
+            }
+        } catch (err) {
+            console.error('Failed to fetch schools', err);
+        }
+    }, []);
+
     // Fetch schools for dropdown
     useEffect(() => {
         if (user && user.role === 'ADMIN') {
-            const fetchSchools = async () => {
-                try {
-                    const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                        credentials: 'include'
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        setSchools((data.schools || []).map((s: any) => ({
-                            id: s.schoolId,
-                            name: s.schoolName
-                        })));
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch schools', err);
-                }
-            };
             fetchSchools();
         }
-    }, [user]);
+    }, [user, fetchSchools]);
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
@@ -503,7 +504,7 @@ export default function AthleteRegistrationPage() {
 
             <footer className="pt-8 border-t border-neutral-900 text-center">
                 <p className="text-[10px] text-neutral-700 uppercase tracking-[0.3em] font-medium">
-                    TournaNet Registration System • Build 2026.02.03
+                    TournaNet Registration System • Build 2026.02.04
                 </p>
             </footer>
         </main>

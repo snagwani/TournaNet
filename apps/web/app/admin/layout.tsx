@@ -4,8 +4,17 @@ import React from 'react';
 import RequireAuth from '../../components/RequireAuth';
 import LogoutButton from '../../components/LogoutButton';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
+
+    const navLinks = [
+        { name: 'Events', href: '/admin/events' },
+        { name: 'Athletes', href: '/admin/athletes' },
+        { name: 'Schools', href: '/admin/schools' },
+    ];
+
     return (
         <RequireAuth allowedRoles={['ADMIN']}>
             <div className="min-h-screen bg-neutral-950">
@@ -22,15 +31,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </Link>
 
                             <div className="hidden md:flex items-center gap-6">
-                                <Link href="/admin/events" className="text-[10px] font-black text-neutral-500 hover:text-white uppercase tracking-widest transition-colors">
-                                    Events
-                                </Link>
-                                <Link href="/admin/athletes" className="text-[10px] font-black text-neutral-500 hover:text-white uppercase tracking-widest transition-colors">
-                                    Athletes
-                                </Link>
-                                <Link href="/admin/schools" className="text-[10px] font-black text-neutral-500 hover:text-white uppercase tracking-widest transition-colors">
-                                    Schools
-                                </Link>
+                                {navLinks.map((link) => {
+                                    const isActive = pathname.startsWith(link.href);
+                                    return (
+                                        <Link
+                                            key={link.href}
+                                            href={link.href}
+                                            className={`text-[10px] font-black uppercase tracking-widest transition-all relative py-2 ${isActive ? 'text-white' : 'text-neutral-500 hover:text-white'
+                                                }`}
+                                        >
+                                            {link.name}
+                                            {isActive && (
+                                                <div className="absolute -bottom-[26px] left-0 right-0 h-0.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
+                                            )}
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </div>
 
