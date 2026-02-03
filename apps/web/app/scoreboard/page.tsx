@@ -1,11 +1,35 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 type TabType = 'current' | 'upcoming' | 'results' | 'tally' | 'search';
 
+interface ScoreboardResult {
+    athleteId: string;
+    bibNumber: number;
+    athleteName: string;
+    schoolName: string;
+    resultValue: string | null;
+    status: string | null;
+    rank: number | null;
+}
+
+interface ScoreboardEvent {
+    eventId: string;
+    name: string;
+    eventType: 'TRACK' | 'FIELD';
+    category: string;
+    gender: string;
+    status: string;
+    heatNumber: number | null;
+    liveResults: ScoreboardResult[];
+}
+
 export default function ScoreboardPage() {
     const [activeTab, setActiveTab] = useState<TabType>('current');
+    const [liveEvents, setLiveEvents] = useState<ScoreboardEvent[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const tabs = [
         { id: 'current', label: 'Current Events', icon: '⚡' },
@@ -15,22 +39,150 @@ export default function ScoreboardPage() {
         { id: 'search', label: 'Athlete Search', icon: '🔍' },
     ];
 
+    const fetchLiveEvents = useCallback(async (isSilent = false) => {
+        if (!isSilent) setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('http://localhost:3001/api/scoreboard/current');
+            if (!response.ok) throw new Error('Failed to fetch live events');
+            const data = await response.json();
+            setLiveEvents(data.events || []);
+        } catch (err: any) {
+            setError(err.message || 'An unexpected error occurred');
+        } finally {
+            if (!isSilent) setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'current') {
+            fetchLiveEvents();
+            const interval = setInterval(() => fetchLiveEvents(true), 30000);
+            return () => clearInterval(interval);
+        }
+    }, [activeTab, fetchLiveEvents]);
+
+    const renderCurrentEvents = () => {
+        if (isLoading) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 animate-pulse space-y-4">
+                    <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                    <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-[0.3em]">Synchronizing Live Feed...</p>
+                </div>
+            );
+        }
+
+        if (liveEvents.length === 0) {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
+                        <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/20">
+                            <span className="text-2xl">⚡</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">No Live Events</h3>
+                        <p className="text-neutral-500 max-w-sm mx-auto">
+                            There are no track or field events currently in progress.
+                            Check the <button onClick={() => setActiveTab('upcoming')} className="text-blue-400 hover:underline">Upcoming</button> tab for the full schedule.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {liveEvents.map((event) => (
+                    <article key={event.eventId} className="space-y-6">
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase border ${event.eventType === 'TRACK' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                                        {event.eventType}
+                                    </span>
+                                    <span className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
+                                        {event.category} • {event.gender}
+                                    </span>
+                                </div>
+                                <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter">
+                                    {event.name}
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                {event.heatNumber && (
+                                    <div className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl">
+                                        <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest leading-none mb-1">Heat</p>
+                                        <p className="text-xl font-black italic text-white leading-none">#{event.heatNumber}</p>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em]">Live</p>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="bg-neutral-900/30 border border-neutral-800 rounded-[2rem] overflow-hidden backdrop-blur-sm shadow-2xl">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-neutral-900/50 border-b border-neutral-800">
+                                            <th className="px-6 py-5 text-[10px] font-mono uppercase tracking-widest text-neutral-500">Rank</th>
+                                            <th className="px-6 py-5 text-[10px] font-mono uppercase tracking-widest text-neutral-500">Bib</th>
+                                            <th className="px-6 py-5 text-[10px] font-mono uppercase tracking-widest text-neutral-500">Athlete</th>
+                                            <th className="px-6 py-5 text-[10px] font-mono uppercase tracking-widest text-neutral-500">School</th>
+                                            <th className="px-6 py-5 text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-right">Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {event.liveResults.map((result) => (
+                                            <tr key={result.athleteId} className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors">
+                                                <td className="px-6 py-5">
+                                                    {result.rank ? (
+                                                        <span className={`
+                                                            flex items-center justify-center w-8 h-8 rounded-lg font-black italic text-sm
+                                                            ${result.rank === 1 ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.3)]' :
+                                                                result.rank === 2 ? 'bg-neutral-400 text-black' :
+                                                                    result.rank === 3 ? 'bg-amber-600 text-black' :
+                                                                        'text-neutral-500'}
+                                                        `}>
+                                                            {result.rank}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-neutral-700 font-mono text-xs">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className="px-2 py-1 bg-neutral-900 border border-neutral-800 rounded text-[10px] font-mono text-neutral-400">
+                                                        #{result.bibNumber}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className="text-sm font-bold text-white capitalize">{result.athleteName}</span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs text-neutral-500 capitalize">{result.schoolName}</span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <span className="text-lg font-black text-white italic tracking-tighter">
+                                                        {result.resultValue || (result.status ? <span className="text-xs text-neutral-500 uppercase not-italic font-bold">{result.status}</span> : '—')}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        );
+    };
+
     const renderContent = () => {
         switch (activeTab) {
             case 'current':
-                return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-12 text-center">
-                            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/20">
-                                <span className="text-2xl">⚡</span>
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Live Tracking Active</h3>
-                            <p className="text-neutral-500 max-w-sm mx-auto">
-                                Real-time heat updates and live timings will appear here once the session begins.
-                            </p>
-                        </div>
-                    </div>
-                );
+                return renderCurrentEvents();
             case 'upcoming':
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

@@ -37,7 +37,11 @@ export class ScoreboardService {
                     heats: {
                         include: {
                             results: {
-                                include: { athlete: true }
+                                include: {
+                                    athlete: {
+                                        include: { school: true }
+                                    }
+                                }
                             }
                         }
                     }
@@ -87,6 +91,7 @@ export class ScoreboardService {
                         athleteId: r.athleteId,
                         bibNumber: r.bibNumber,
                         athleteName: r.athlete.name,
+                        schoolName: r.athlete.school.name,
                         resultValue: r.resultValue,
                         status: r.status,
                         rank: r.rank
