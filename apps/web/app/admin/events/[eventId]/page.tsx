@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import RequireAuth from '../../../../components/RequireAuth';
 import { useAuth } from '../../../../app/context/AuthContext';
 
 interface Medalist {
@@ -75,9 +74,9 @@ export default function EventDetailPage() {
     }, [user, eventId, fetchEventDetail]);
 
     return (
-        <RequireAuth allowedRoles={['ADMIN']}>
+        <>
             {isLoading ? (
-                <div className="min-h-screen bg-neutral-950 p-8 flex items-center justify-center">
+                <div className="min-h-[60vh] flex items-center justify-center">
                     <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                         <p className="text-neutral-500 font-mono text-xs uppercase tracking-widest animate-pulse">
@@ -86,7 +85,7 @@ export default function EventDetailPage() {
                     </div>
                 </div>
             ) : error || !event ? (
-                <div className="min-h-screen bg-neutral-950 p-8 flex items-center justify-center">
+                <div className="min-h-[60vh] flex items-center justify-center">
                     <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 p-8 rounded-[2rem] text-center space-y-6">
                         <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-3xl flex items-center justify-center mx-auto text-red-500">
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +105,7 @@ export default function EventDetailPage() {
                     </div>
                 </div>
             ) : (
-                <main className="min-h-screen bg-neutral-950 p-8 space-y-8 pb-16">
+                <main className="p-8 space-y-8 pb-16">
                     {/* Header with Navigation */}
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="space-y-4">
@@ -257,6 +256,6 @@ export default function EventDetailPage() {
                     </footer>
                 </main>
             )}
-        </RequireAuth>
+        </>
     );
 }
