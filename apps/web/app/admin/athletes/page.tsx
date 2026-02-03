@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useAdminReport } from '@/hooks/useAdminReport';
 
 interface AthletePerformance {
     athleteId: string;
@@ -20,10 +21,6 @@ interface SchoolOption {
 }
 
 export default function AthletesReportPage() {
-    const [athletes, setAthletes] = useState<AthletePerformance[]>([]);
-    const [schoolsList, setSchoolsList] = useState<SchoolOption[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState({
         schoolId: '',
         category: '',
@@ -32,63 +29,54 @@ export default function AthletesReportPage() {
 
     const { user } = useAuth();
     const router = useRouter();
-
-    const fetchSchools = useCallback(async () => {
-        try {
-            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                credentials: 'include'
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setSchoolsList((data.schools || []).map((s: any) => ({
-                    id: s.schoolId,
-                    name: s.schoolName
-                })));
-            }
-        } catch (err) {
-            console.error('Failed to fetch schools list', err);
+    const fetchSchoolsFn = useCallback(async () => {
+        const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            return (data.schools || []).map((s: any) => ({
+                id: s.schoolId,
+                name: s.schoolName
+            }));
         }
+        return [];
     }, []);
 
-    const fetchAthletes = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const params = new URLSearchParams();
-            if (filters.schoolId) params.append('schoolId', filters.schoolId);
-            if (filters.category) params.append('category', filters.category);
-            if (filters.gender) params.append('gender', filters.gender);
+    const fetchAthletesFn = useCallback(async () => {
+        const params = new URLSearchParams();
+        if (filters.schoolId) params.append('schoolId', filters.schoolId);
+        if (filters.category) params.append('category', filters.category);
+        if (filters.gender) params.append('gender', filters.gender);
 
-            const response = await fetch(`http://localhost:3001/api/admin/reports/athletes?${params.toString()}`, {
-                credentials: 'include'
-            });
+        const response = await fetch(`http://localhost:3001/api/admin/reports/athletes?${params.toString()}`, {
+            credentials: 'include'
+        });
 
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || 'Failed to fetch athlete reports');
-            }
-
-            const data = await response.json();
-            setAthletes(data.athletes || []);
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
-        } finally {
-            setIsLoading(false);
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || 'Failed to fetch athlete reports');
         }
+
+        const data = await response.json();
+        return data.athletes || [];
     }, [filters]);
 
-    useEffect(() => {
-        if (!user) return;
-        fetchSchools();
-    }, [user, fetchSchools]);
+    const { data: schoolsListData } = useAdminReport<SchoolOption[]>({
+        fetchFn: fetchSchoolsFn
+    });
 
-    useEffect(() => {
-        if (!user) {
-            setIsLoading(false);
-            return;
-        }
-        fetchAthletes();
-    }, [user, fetchAthletes]);
+    const {
+        data: athletesData,
+        isLoading,
+        error,
+        refresh: fetchAthletes
+    } = useAdminReport<AthletePerformance[]>({
+        fetchFn: fetchAthletesFn
+    });
+
+    const schoolsList = schoolsListData || [];
+    const athletes = athletesData || [];
 
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));

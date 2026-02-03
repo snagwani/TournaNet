@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../app/context/AuthContext';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useAdminReport } from '@/hooks/useAdminReport';
 
 interface SchoolPerformance {
     schoolId: string;
@@ -17,57 +18,49 @@ interface SchoolPerformance {
 }
 
 export default function SchoolsReportPage() {
-    const [schools, setSchools] = useState<SchoolPerformance[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const fetchSchoolsFn = useCallback(async () => {
+        const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || 'Failed to fetch school reports');
+        }
+
+        const data = await response.json();
+        const rawSchools = data.schools || [];
+
+        // Sort logic: Gold > Silver > Bronze > Total Points
+        return [...rawSchools].sort((a: SchoolPerformance, b: SchoolPerformance) => {
+            if (b.gold !== a.gold) return b.gold - a.gold;
+            if (b.silver !== a.silver) return b.silver - a.silver;
+            if (b.bronze !== a.bronze) return b.bronze - a.bronze;
+            return b.totalPoints - a.totalPoints;
+        });
+    }, []);
+
+    const {
+        data: schoolsData,
+        isLoading,
+        error,
+        refresh: fetchSchools
+    } = useAdminReport<SchoolPerformance[]>({
+        fetchFn: fetchSchoolsFn
+    });
+
+    const schools = schoolsData || [];
+
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedDistrict, setSelectedDistrict] = useState('');
 
     const { user } = useAuth();
     const router = useRouter();
 
-    const fetchSchools = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || 'Failed to fetch school reports');
-            }
-
-            const data = await response.json();
-            const rawSchools = data.schools || [];
-
-            // Sort logic: Gold > Silver > Bronze > Total Points
-            const sorted = [...rawSchools].sort((a: SchoolPerformance, b: SchoolPerformance) => {
-                if (b.gold !== a.gold) return b.gold - a.gold;
-                if (b.silver !== a.silver) return b.silver - a.silver;
-                if (b.bronze !== a.bronze) return b.bronze - a.bronze;
-                return b.totalPoints - a.totalPoints;
-            });
-
-            setSchools(sorted);
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!user) {
-            setIsLoading(false);
-            return;
-        }
-        fetchSchools();
-    }, [user, fetchSchools]);
-
     // Derived state for districts
-    const districts = Array.from(new Set(schools.map(s => s.district))).sort();
+    const districts = useMemo(() =>
+        Array.from(new Set(schools.map(s => s.district))).sort()
+        , [schools]);
 
     // Filtering logic
     const filteredSchools = schools.filter(school => {
