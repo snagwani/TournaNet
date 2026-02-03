@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../app/context/AuthContext';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface RequireAuthProps {
     children: React.ReactNode;

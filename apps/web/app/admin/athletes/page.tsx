@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../app/context/AuthContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 interface AthletePerformance {

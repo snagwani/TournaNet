@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface AthleteFormData {
     name: string;
@@ -41,27 +42,42 @@ export default function AthleteRegistrationPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
     const [bibNumber, setBibNumber] = useState<number | null>(null);
+    const { user, isLoading: authLoading } = useAuth();
+    const [isUnauthorized, setIsUnauthorized] = useState(false);
+
+    useEffect(() => {
+        if (!authLoading) {
+            if (!user || user.role !== 'ADMIN') {
+                setIsUnauthorized(true);
+                setTimeout(() => {
+                    router.push('/login');
+                }, 3000);
+            }
+        }
+    }, [user, authLoading, router]);
 
     // Fetch schools for dropdown
     useEffect(() => {
-        const fetchSchools = async () => {
-            try {
-                const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
-                    credentials: 'include'
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setSchools((data.schools || []).map((s: any) => ({
-                        id: s.schoolId,
-                        name: s.schoolName
-                    })));
+        if (user && user.role === 'ADMIN') {
+            const fetchSchools = async () => {
+                try {
+                    const response = await fetch('http://localhost:3001/api/admin/reports/schools', {
+                        credentials: 'include'
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setSchools((data.schools || []).map((s: any) => ({
+                            id: s.schoolId,
+                            name: s.schoolName
+                        })));
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch schools', err);
                 }
-            } catch (err) {
-                console.error('Failed to fetch schools', err);
-            }
-        };
-        fetchSchools();
-    }, []);
+            };
+            fetchSchools();
+        }
+    }, [user]);
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
@@ -213,6 +229,42 @@ export default function AthleteRegistrationPage() {
         setApiError(null);
         setBibNumber(null);
     };
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (isUnauthorized) {
+        return (
+            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+                <div className="bg-red-500/10 border-2 border-red-500/30 p-8 rounded-[2rem] max-w-md w-full text-center space-y-6 animate-in fade-in zoom-in-95 duration-500">
+                    <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto ring-8 ring-red-500/5">
+                        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0-8V7m0 0a2 2 0 100-4 2 2 0 000 4zm0 0v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Access Denied</h2>
+                        <p className="text-neutral-400 text-sm font-medium">
+                            Only administrators can access the registration system.
+                        </p>
+                    </div>
+                    <div className="pt-4 flex flex-col items-center gap-3">
+                        <div className="flex gap-1">
+                            <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce"></div>
+                        </div>
+                        <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest">Redirecting to Login</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <main className="p-8 space-y-8 max-w-5xl mx-auto">
