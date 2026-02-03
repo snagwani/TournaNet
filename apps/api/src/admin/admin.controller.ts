@@ -22,6 +22,13 @@ export class AdminController {
         return this.adminService.getSchoolReports();
     }
 
+    @Get('reports/schools/:id')
+    async getSchoolDetail(@Param('id') id: string) {
+        const detail = await this.adminService.getSchoolDetail(id);
+        if (!detail) throw new NotFoundException('School not found');
+        return detail;
+    }
+
     @Get('reports/athletes')
     @UsePipes(new ValidationPipe({ transform: true }))
     async getAthleteReports(@Query() query: AthleteReportQueryDto) {

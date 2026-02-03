@@ -111,6 +111,78 @@ export class AdminService {
         };
     }
 
+    async getSchoolDetail(id: string) {
+        const school = await this.prisma.school.findUnique({
+            where: { id },
+            include: {
+                athletes: {
+                    include: {
+                        results: {
+                            include: {
+                                heat: {
+                                    include: {
+                                        event: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!school) return null;
+
+        let gold = 0, silver = 0, bronze = 0, points = 0;
+        const eventsParticipated = new Set<string>();
+
+        const athletes = school.athletes.map(a => {
+            let athleteGold = 0, athleteSilver = 0, athleteBronze = 0;
+            const athleteEvents = a.results.map(r => {
+                if (r.heat) {
+                    eventsParticipated.add(r.heat.eventId);
+                }
+                if (r.status === ResultStatus.FINISHED) {
+                    if (r.rank === 1) { gold++; athleteGold++; points += 10; }
+                    else if (r.rank === 2) { silver++; athleteSilver++; points += 8; }
+                    else if (r.rank === 3) { bronze++; athleteBronze++; points += 6; }
+                }
+                return {
+                    eventName: r.heat.event.name,
+                    eventType: r.heat.event.eventType,
+                    rank: r.rank,
+                    resultValue: r.resultValue,
+                    status: r.status
+                };
+            });
+
+            return {
+                athleteId: a.id,
+                name: a.name,
+                bibNumber: a.bibNumber,
+                category: a.category,
+                gender: a.gender,
+                gold: athleteGold,
+                silver: athleteSilver,
+                bronze: athleteBronze,
+                events: athleteEvents
+            };
+        });
+
+        return {
+            schoolId: school.id,
+            schoolName: school.name,
+            district: school.district,
+            athletesCount: school.athletes.length,
+            eventsParticipated: eventsParticipated.size,
+            gold,
+            silver,
+            bronze,
+            totalPoints: points,
+            athletes
+        };
+    }
+
     async getAthleteReports(query: AthleteReportQueryDto) {
         const where: Prisma.AthleteWhereInput = {};
         if (query.schoolId) where.schoolId = query.schoolId;
