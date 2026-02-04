@@ -217,10 +217,10 @@ export class ScoreboardService {
 
     async getMedals() {
         return this.getCached('medals', async () => {
-            // Aggregation: Fetch all Top 3 results
+            // Aggregation: Fetch all Top 8 results (for points: 10-8-6-5-4-3-2-1)
             const results = await this.prisma.result.findMany({
                 where: {
-                    rank: { in: [1, 2, 3] },
+                    rank: { in: [1, 2, 3, 4, 5, 6, 7, 8] },
                     status: ResultStatus.FINISHED
                 },
                 include: {
@@ -244,7 +244,7 @@ export class ScoreboardService {
                 const stats = schoolStats.get(schoolId);
                 // Ensure stats exists (it should, but TS is strict)
                 if (stats) {
-                    // Rank 1=Gold(10), 2=Silver(8), 3=Bronze(6)
+                    // Points: 1st=10, 2nd=8, 3rd=6, 4th=5, 5th=4, 6th=3, 7th=2, 8th=1
                     if (res.rank === 1) {
                         stats.gold++;
                         stats.points += 10;
@@ -254,6 +254,16 @@ export class ScoreboardService {
                     } else if (res.rank === 3) {
                         stats.bronze++;
                         stats.points += 6;
+                    } else if (res.rank === 4) {
+                        stats.points += 5;
+                    } else if (res.rank === 5) {
+                        stats.points += 4;
+                    } else if (res.rank === 6) {
+                        stats.points += 3;
+                    } else if (res.rank === 7) {
+                        stats.points += 2;
+                    } else if (res.rank === 8) {
+                        stats.points += 1;
                     }
                 }
             });
@@ -274,7 +284,7 @@ export class ScoreboardService {
             });
 
             return {
-                rankingRule: "Gold > Silver > Bronze > Total Points",
+                rankingRule: "Gold > Silver > Bronze > Total Points (1st=10, 2nd=8, 3rd=6, 4th=5, 5th=4, 6th=3, 7th=2, 8th=1)",
                 schools
             };
         });
