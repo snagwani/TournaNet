@@ -22,6 +22,10 @@ export class UpdateEventDto {
     venue?: string;
 
     @IsOptional()
+    @IsString()
+    delayReason?: string;
+
+    @IsOptional()
     @IsEnum(AthleteCategory)
     category?: AthleteCategory;
 

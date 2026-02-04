@@ -27,6 +27,7 @@ interface Event {
     gender: string;
     date: string;
     startTime: string;
+    delayReason?: string | null;
     heats: Heat[];
 }
 
@@ -38,6 +39,7 @@ export default function EventHeatsPage({ params }: { params: Promise<{ id: strin
     const [error, setError] = useState<string | null>(null);
     const [isRescheduling, setIsRescheduling] = useState(false);
     const [newTime, setNewTime] = useState('');
+    const [delayReason, setDelayReason] = useState('');
 
     const fetchEvent = async () => {
         setIsLoading(true);
@@ -49,6 +51,7 @@ export default function EventHeatsPage({ params }: { params: Promise<{ id: strin
             const data = await response.json();
             setEvent(data);
             setNewTime(data.startTime);
+            setDelayReason(data.delayReason || '');
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
         } finally {
@@ -65,7 +68,10 @@ export default function EventHeatsPage({ params }: { params: Promise<{ id: strin
             const response = await fetch(`http://localhost:3001/api/events/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ startTime: newTime }),
+                body: JSON.stringify({
+                    startTime: newTime,
+                    delayReason: delayReason || null
+                }),
                 credentials: 'include'
             });
 
@@ -121,15 +127,26 @@ export default function EventHeatsPage({ params }: { params: Promise<{ id: strin
                         <div className="bg-neutral-900 border border-neutral-800 rounded-2xl px-6 py-4 text-right">
                             <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">Scheduled Time</p>
                             {isRescheduling ? (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="time"
-                                        value={newTime}
-                                        onChange={(e) => setNewTime(e.target.value)}
-                                        className="bg-neutral-800 border border-neutral-700 text-white rounded px-2 py-1 text-xl font-black italic"
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="time"
+                                            value={newTime}
+                                            onChange={(e) => setNewTime(e.target.value)}
+                                            className="bg-neutral-800 border border-neutral-700 text-white rounded px-2 py-1 text-xl font-black italic"
+                                        />
+                                    </div>
+                                    <textarea
+                                        value={delayReason}
+                                        onChange={(e) => setDelayReason(e.target.value)}
+                                        placeholder="Reason for delay (e.g., Heavy rain, Lightning)"
+                                        className="w-full bg-neutral-800 border border-neutral-700 text-white rounded px-3 py-2 text-xs placeholder:text-neutral-600 focus:outline-none focus:border-emerald-500"
+                                        rows={2}
                                     />
-                                    <button onClick={handleReschedule} className="text-emerald-500 text-sm font-bold">Save</button>
-                                    <button onClick={() => setIsRescheduling(false)} className="text-red-500 text-sm font-bold">Cancel</button>
+                                    <div className="flex gap-2">
+                                        <button onClick={handleReschedule} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors">Save</button>
+                                        <button onClick={() => setIsRescheduling(false)} className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 rounded-lg text-xs font-bold transition-colors">Cancel</button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
@@ -146,6 +163,17 @@ export default function EventHeatsPage({ params }: { params: Promise<{ id: strin
                         </div>
                     </div>
                 </div>
+
+                {/* Delay Banner */}
+                {event.delayReason && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 flex items-start gap-4">
+                        <div className="text-3xl">⚠️</div>
+                        <div className="flex-1">
+                            <p className="text-amber-400 font-bold text-sm uppercase tracking-widest mb-1">Event Delayed</p>
+                            <p className="text-neutral-300 text-sm">{event.delayReason}</p>
+                        </div>
+                    </div>
+                )}
             </header>
 
             <section className="space-y-6">
