@@ -43,10 +43,26 @@ export class HeatsService {
                 }
             });
 
-            const athletes = registrations.map(r => r.athlete);
+            // Filter athletes to match event's gender and category
+            const athletes = registrations
+                .map(r => r.athlete)
+                .filter(athlete =>
+                    athlete.gender === event.gender &&
+                    athlete.category === event.category
+                );
 
             if (athletes.length === 0) {
-                throw new BadRequestException('No athletes registered for this event');
+                throw new BadRequestException(
+                    `No athletes matching event criteria (${event.gender} ${event.category}) are registered for this event`
+                );
+            }
+
+            // Log warning if some athletes were filtered out
+            const filteredCount = registrations.length - athletes.length;
+            if (filteredCount > 0) {
+                this.logger.warn(
+                    `Filtered out ${filteredCount} athlete(s) with mismatched gender/category for event ${eventId}`
+                );
             }
 
             // 4. Seeding Logic
