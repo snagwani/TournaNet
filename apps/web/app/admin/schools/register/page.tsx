@@ -114,19 +114,24 @@ export default function SchoolRegistrationPage() {
         setIsSubmitting(true);
 
         try {
+            const formDataToSend = new FormData();
+            formDataToSend.append('name', formData.schoolName);
+            formDataToSend.append('district', formData.district);
+            formDataToSend.append('contactName', formData.contactPersonName);
+            formDataToSend.append('contactEmail', formData.contactEmail);
+            if (formData.contactPhone) {
+                formDataToSend.append('contactPhone', formData.contactPhone);
+            }
+            if (formData.schoolLogo) {
+                formDataToSend.append('logo', formData.schoolLogo);
+            }
+
             const response = await fetch('http://localhost:3001/api/schools', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                // Content-Type header must be undefined for FormData to set boundary automatically
+                // headers: {}, 
                 credentials: 'include',
-                body: JSON.stringify({
-                    name: formData.schoolName,
-                    district: formData.district,
-                    contactName: formData.contactPersonName,
-                    contactEmail: formData.contactEmail,
-                    contactPhone: formData.contactPhone || undefined,
-                }),
+                body: formDataToSend,
             });
 
             if (!response.ok) {

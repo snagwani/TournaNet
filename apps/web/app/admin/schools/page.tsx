@@ -9,6 +9,7 @@ interface SchoolPerformance {
     schoolId: string;
     schoolName: string;
     district: string;
+    logoUrl?: string;
     athletesCount: number;
     eventsParticipated: number;
     gold: number;
@@ -232,6 +233,19 @@ export default function SchoolsReportPage() {
                                                 <div className="flex items-center gap-3">
                                                     {isFirst && (
                                                         <div className="w-1.5 h-6 bg-yellow-500 rounded-full shadow-[0_0_12px_rgba(234,179,8,0.4)]" />
+                                                    )}
+                                                    {school.logoUrl ? (
+                                                        <img
+                                                            src={`http://localhost:3001${school.logoUrl}`}
+                                                            alt={`${school.schoolName} Logo`}
+                                                            className="w-8 h-8 rounded-full object-cover border border-neutral-700 bg-neutral-800"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center flex-shrink-0">
+                                                            <span className="text-[10px] font-bold text-neutral-500">
+                                                                {school.schoolName.substring(0, 2).toUpperCase()}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                     <span className={`font-bold capitalize transition-colors ${isFirst ? 'text-yellow-500/90' : 'text-white'}`}>
                                                         {school.schoolName}

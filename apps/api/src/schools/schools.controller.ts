@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UsePipes, ValidationPipe, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SchoolsService } from './schools.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { SchoolDto } from './dto/school.dto';
@@ -18,12 +19,13 @@ export class SchoolsController {
         transform: true,
         whitelist: true,
         forbidNonWhitelisted: true,
-        // ValidationPipe defaults throw UnprocessableEntity (422) if we configure explicit factory 
-        // OR BadRequest (400) by default. 
-        // The requirement is 422 for validation errors.
         errorHttpStatusCode: 422
     }))
-    async create(@Body() createSchoolDto: CreateSchoolDto): Promise<SchoolDto> {
-        return this.schoolsService.create(createSchoolDto);
+    @UseInterceptors(FileInterceptor('logo'))
+    async create(
+        @Body() createSchoolDto: CreateSchoolDto,
+        @UploadedFile() file?: Express.Multer.File,
+    ): Promise<SchoolDto> {
+        return this.schoolsService.create(createSchoolDto, file);
     }
 }

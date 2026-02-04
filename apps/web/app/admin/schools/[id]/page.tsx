@@ -28,6 +28,7 @@ interface SchoolDetail {
     schoolId: string;
     schoolName: string;
     district: string;
+    logoUrl?: string;
     athletesCount: number;
     eventsParticipated: number;
     gold: number;
@@ -118,23 +119,34 @@ export default function SchoolDetailPage({ params }: { params: Promise<{ id: str
         <RequireAuth allowedRoles={['ADMIN']}>
             <main className="min-h-screen bg-neutral-950 p-8 space-y-12">
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-900 pb-8 gap-6">
-                    <div className="space-y-4">
-                        <Link
-                            href="/admin/schools"
-                            className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500 hover:text-white transition-colors flex items-center gap-2 group"
-                        >
-                            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Back to District Ledger
-                        </Link>
-                        <div className="space-y-1">
-                            <h1 className="text-5xl font-black tracking-tighter text-white uppercase italic leading-none">
-                                {school.schoolName}
-                            </h1>
-                            <p className="text-blue-500 font-mono text-xs uppercase tracking-[0.4em] font-bold">
-                                {school.district} • Tournament Analytics
-                            </p>
+                    <div className="flex items-center gap-6">
+                        {school.logoUrl && (
+                            <div className="flex-shrink-0">
+                                <img
+                                    src={`http://localhost:3001${school.logoUrl}`}
+                                    alt={`${school.schoolName} Logo`}
+                                    className="w-24 h-24 rounded-full object-cover border-2 border-neutral-800 bg-neutral-900 shadow-2xl"
+                                />
+                            </div>
+                        )}
+                        <div className="space-y-4">
+                            <Link
+                                href="/admin/schools"
+                                className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500 hover:text-white transition-colors flex items-center gap-2 group"
+                            >
+                                <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to District Ledger
+                            </Link>
+                            <div className="space-y-1">
+                                <h1 className="text-5xl font-black tracking-tighter text-white uppercase italic leading-none">
+                                    {school.schoolName}
+                                </h1>
+                                <p className="text-blue-500 font-mono text-xs uppercase tracking-[0.4em] font-bold">
+                                    {school.district} • Tournament Analytics
+                                </p>
+                            </div>
                         </div>
                     </div>
 
