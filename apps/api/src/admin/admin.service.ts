@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AthleteReportQueryDto, EventReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
-import { AthleteCategory, Gender, ResultStatus, Prisma } from '@prisma/client';
+import { AthleteCategory, Gender, ResultStatus, Prisma, EventType } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
@@ -84,6 +84,11 @@ export class AdminService {
                         if (r.rank === 1) { gold++; points += 10; }
                         else if (r.rank === 2) { silver++; points += 8; }
                         else if (r.rank === 3) { bronze++; points += 6; }
+                        else if (r.rank === 4) { points += 5; }
+                        else if (r.rank === 5) { points += 4; }
+                        else if (r.rank === 6) { points += 3; }
+                        else if (r.rank === 7) { points += 2; }
+                        else if (r.rank === 8) { points += 1; }
                     }
                 });
             });
@@ -147,6 +152,11 @@ export class AdminService {
                     if (r.rank === 1) { gold++; athleteGold++; points += 10; }
                     else if (r.rank === 2) { silver++; athleteSilver++; points += 8; }
                     else if (r.rank === 3) { bronze++; athleteBronze++; points += 6; }
+                    else if (r.rank === 4) { points += 5; }
+                    else if (r.rank === 5) { points += 4; }
+                    else if (r.rank === 6) { points += 3; }
+                    else if (r.rank === 7) { points += 2; }
+                    else if (r.rank === 8) { points += 1; }
                 }
                 return {
                     eventName: r.heat.event.name,
@@ -357,16 +367,50 @@ export class AdminService {
         // Combine all results from all heats
         const allResults = e.heats.flatMap((h: any) => h.results);
 
-        // Sort by rank, then filter finished for medalists
-        const sorted = [...allResults].sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+        // Helper to parse result value to number
+        const parse = (val: string | null) => {
+            if (!val) return e.eventType === EventType.TRACK ? Infinity : -Infinity;
+            const num = parseFloat(val.replace(/[^\d.-]/g, ''));
+            return isNaN(num) ? (e.eventType === EventType.TRACK ? Infinity : -Infinity) : num;
+        };
 
-        const getMedalist = (r: number) => {
-            const match = sorted.find((res: any) => res.rank === r && res.status === ResultStatus.FINISHED);
+        // For medalists, we typically only care about the "Final" phase if multiple exist.
+        // A safe heuristic: Group results by athlete and take their BEST performance.
+        const athleteBestResults = new Map<string, any>();
+        allResults.forEach((r: any) => {
+            const existing = athleteBestResults.get(r.athleteId);
+            const currentVal = parse(r.resultValue);
+            const existingVal = existing ? parse(existing.resultValue) : (e.eventType === EventType.TRACK ? Infinity : -Infinity);
+
+            const isBetter = e.eventType === EventType.TRACK
+                ? currentVal < existingVal
+                : currentVal > existingVal;
+
+            if (!existing || isBetter) {
+                athleteBestResults.set(r.athleteId, r);
+            }
+        });
+
+        // Global Sort for Medals
+        const sortedForMedals = Array.from(athleteBestResults.values())
+            .filter(r => r.status === ResultStatus.FINISHED)
+            .sort((a, b) => {
+                const valA = parse(a.resultValue);
+                const valB = parse(b.resultValue);
+                return e.eventType === EventType.TRACK ? valA - valB : valB - valA;
+            });
+
+        const getMedalist = (idx: number) => {
+            const match = sortedForMedals[idx];
             return match ? {
                 athleteName: match.athlete.name,
                 schoolName: match.athlete.school.name
             } : null;
         };
+
+        // All results for detailed list (keep them grouped by heats or just sorted globally?)
+        // Let's sort globally but include everyone
+        const globalSortedResults = [...allResults].sort((a, b) => (a.rank || 999) - (b.rank || 999));
 
         return {
             eventId: e.id,
@@ -375,17 +419,17 @@ export class AdminService {
             category: e.category,
             gender: e.gender,
             date: e.date,
-            gold: getMedalist(1),
-            silver: getMedalist(2),
-            bronze: getMedalist(3),
-            results: sorted.map((r: any) => ({
+            gold: getMedalist(0),
+            silver: getMedalist(1),
+            bronze: getMedalist(2),
+            results: globalSortedResults.map((r: any) => ({
                 athleteId: r.athleteId,
                 athleteName: r.athlete.name,
                 schoolName: r.athlete.school.name,
                 bibNumber: r.bibNumber,
                 status: r.status,
                 resultValue: r.resultValue,
-                rank: r.rank,
+                rank: r.rank, // Original heat rank
                 notes: r.notes
             }))
         };
