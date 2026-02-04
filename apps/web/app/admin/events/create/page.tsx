@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../app/context/AuthContext';
 
@@ -27,6 +27,8 @@ const EVENT_NAMES = {
 export default function CreateEventPage() {
     const router = useRouter();
     const { user } = useAuth();
+    const warningsRef = useRef<HTMLDivElement>(null);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -51,9 +53,127 @@ export default function CreateEventPage() {
         finalists: 8
     });
 
+    const [warnings, setWarnings] = useState<string[]>([]);
+    const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
+
+    // Validate date (not in the past)
+    const validateDate = (date: string): string[] => {
+        const warnings: string[] = [];
+
+        if (!date) return warnings;
+
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+        if (selectedDate < today) {
+            warnings.push('🚫 Cannot schedule events in the past. Please select a future date.');
+        }
+
+        return warnings;
+    };
+
+    // Validate time constraints
+    const validateTime = (time: string): string[] => {
+        const warnings: string[] = [];
+
+        if (!time) return warnings;
+
+        const [hours, minutes] = time.split(':').map(Number);
+        const timeInMinutes = hours * 60 + minutes;
+
+        // Check if during lunch break (13:00-14:00)
+        if (timeInMinutes >= 13 * 60 && timeInMinutes < 14 * 60) {
+            warnings.push('⚠️ Events cannot be scheduled during lunch break (13:00-14:00)');
+        }
+
+        // Check if outside allowed hours (08:00-17:00)
+        if (timeInMinutes < 8 * 60 || timeInMinutes >= 17 * 60) {
+            warnings.push('⚠️ Events must be scheduled between 08:00 and 17:00');
+        }
+
+        return warnings;
+    };
+
+    // Check for conflicts with existing events
+    const checkConflicts = async () => {
+        if (!formData.date || !formData.startTime || !formData.category || !formData.gender) {
+            return;
+        }
+
+        setIsCheckingConflicts(true);
+        const newWarnings: string[] = [];
+
+        try {
+            // Validate date first (check for past dates)
+            const dateWarnings = validateDate(formData.date);
+            newWarnings.push(...dateWarnings);
+
+            // Validate time
+            const timeWarnings = validateTime(formData.startTime);
+            newWarnings.push(...timeWarnings);
+
+            // Fetch existing events for the same date, category, and gender
+            const response = await fetch('http://localhost:3001/api/events', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const events = await response.json();
+
+                // Filter events for same date, category, and gender
+                const conflictingEvents = events.filter((event: any) => {
+                    const eventDate = new Date(event.date).toISOString().split('T')[0];
+                    const selectedDate = formData.date;
+
+                    return eventDate === selectedDate &&
+                        event.category === formData.category &&
+                        event.gender === formData.gender;
+                });
+
+                if (conflictingEvents.length > 0) {
+                    newWarnings.push(
+                        `⚠️ ${conflictingEvents.length} existing event(s) found for ${formData.gender} ${formData.category} on this date. Athletes may have scheduling conflicts.`
+                    );
+
+                    // Check for time overlaps
+                    const selectedTime = formData.startTime;
+                    const overlappingEvents = conflictingEvents.filter((event: any) => {
+                        return event.startTime === selectedTime;
+                    });
+
+                    if (overlappingEvents.length > 0) {
+                        newWarnings.push(
+                            `🚫 ${overlappingEvents.length} event(s) scheduled at the same time (${selectedTime}). This will cause athlete conflicts!`
+                        );
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error checking conflicts:', err);
+        } finally {
+            setWarnings(newWarnings);
+            setIsCheckingConflicts(false);
+        }
+    };
+
+    // Check conflicts when date, time, category, or gender changes
+    useEffect(() => {
+        checkConflicts();
+    }, [formData.date, formData.startTime, formData.category, formData.gender]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        // Check if there are any validation warnings
+        if (warnings.length > 0) {
+            setError('Please fix the validation warnings before creating the event.');
+            // Scroll to top to show errors
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -78,6 +198,8 @@ export default function CreateEventPage() {
             router.push(`/admin/events/${data.id}`);
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
+            // Scroll to top to show error message
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setIsSubmitting(false);
         }
@@ -118,6 +240,35 @@ export default function CreateEventPage() {
                 </div>
             )}
 
+            {/* Conflict Warnings */}
+            {warnings.length > 0 && (
+                <div ref={warningsRef} className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-amber-400 text-lg">⚠️</span>
+                        <p className="text-amber-400 text-sm font-black uppercase tracking-wider">
+                            Scheduling Warnings
+                        </p>
+                        {isCheckingConflicts && (
+                            <span className="ml-auto text-xs text-neutral-500 animate-pulse">Checking...</span>
+                        )}
+                    </div>
+                    {warnings.map((warning, idx) => (
+                        <div
+                            key={idx}
+                            className={`p-3 rounded-xl border ${warning.includes('🚫')
+                                ? 'bg-red-500/10 border-red-500/20'
+                                : 'bg-amber-500/10 border-amber-500/20'
+                                }`}
+                        >
+                            <p className={`text-sm font-bold ${warning.includes('🚫') ? 'text-red-400' : 'text-amber-400'
+                                }`}>
+                                {warning}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Event Name */}
                 <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6 space-y-4">
@@ -150,8 +301,8 @@ export default function CreateEventPage() {
                                 <label
                                     key={type}
                                     className={`flex-1 cursor-pointer border-2 rounded-xl p-4 transition-all ${formData.eventType === type
-                                            ? 'border-blue-500 bg-blue-500/10'
-                                            : 'border-neutral-800 bg-neutral-900/30 hover:border-neutral-700'
+                                        ? 'border-blue-500 bg-blue-500/10'
+                                        : 'border-neutral-800 bg-neutral-900/30 hover:border-neutral-700'
                                         }`}
                                 >
                                     <input
@@ -164,7 +315,7 @@ export default function CreateEventPage() {
                                     />
                                     <div className="text-center">
                                         <span className="text-2xl mb-2 block">{type === 'TRACK' ? '🏃' : '🏋️'}</span>
-                                        <span className="text-sm font-black uppercase">{type}</span>
+                                        <span className="text-white text-sm font-black uppercase">{type}</span>
                                     </div>
                                 </label>
                             ))}
@@ -181,8 +332,8 @@ export default function CreateEventPage() {
                                 <label
                                     key={gender}
                                     className={`flex-1 cursor-pointer border-2 rounded-xl p-4 transition-all ${formData.gender === gender
-                                            ? 'border-blue-500 bg-blue-500/10'
-                                            : 'border-neutral-800 bg-neutral-900/30 hover:border-neutral-700'
+                                        ? 'border-blue-500 bg-blue-500/10'
+                                        : 'border-neutral-800 bg-neutral-900/30 hover:border-neutral-700'
                                         }`}
                                 >
                                     <input
@@ -194,7 +345,7 @@ export default function CreateEventPage() {
                                         className="sr-only"
                                     />
                                     <div className="text-center">
-                                        <span className="text-sm font-black uppercase">{gender}</span>
+                                        <span className="text-white text-sm font-black uppercase">{gender}</span>
                                     </div>
                                 </label>
                             ))}
@@ -211,8 +362,8 @@ export default function CreateEventPage() {
                                 <label
                                     key={category}
                                     className={`cursor-pointer border-2 rounded-xl p-4 transition-all ${formData.category === category
-                                            ? 'border-blue-500 bg-blue-500/10'
-                                            : 'border-neutral-800 bg-neutral-900/30 hover:border-neutral-700'
+                                        ? 'border-blue-500 bg-blue-500/10'
+                                        : 'border-neutral-800 bg-neutral-900/30 hover:border-neutral-700'
                                         }`}
                                 >
                                     <input
@@ -224,7 +375,7 @@ export default function CreateEventPage() {
                                         className="sr-only"
                                     />
                                     <div className="text-center">
-                                        <span className="text-sm font-black uppercase">{category}</span>
+                                        <span className="text-white text-sm font-black uppercase">{category}</span>
                                     </div>
                                 </label>
                             ))}
