@@ -1,4 +1,6 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UsePipes, ValidationPipe, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { AthletesService } from './athletes.service';
 import { CreateAthleteDto } from './dto/create-athlete.dto';
 import { AthleteDto } from './dto/athlete.dto';
@@ -22,5 +24,14 @@ export class AthletesController {
     }))
     async create(@Body() createAthleteDto: CreateAthleteDto): Promise<AthleteDto> {
         return this.athletesService.create(createAthleteDto);
+    }
+
+    @Post('bulk-import')
+    @UseInterceptors(FileInterceptor('file'))
+    async bulkImport(@UploadedFile() file: Express.Multer.File) {
+        if (!file) {
+            throw new BadRequestException('CSV file is required');
+        }
+        return this.athletesService.bulkImport(file.buffer);
     }
 }

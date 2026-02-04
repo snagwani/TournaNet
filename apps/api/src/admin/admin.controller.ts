@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UsePipes, ValidationPipe, UseGuards, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Query, UsePipes, ValidationPipe, UseGuards, Param, NotFoundException, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AdminService } from './admin.service';
 import { AthleteReportQueryDto, ExportQueryDto, EventReportQueryDto } from './dto/admin-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -57,7 +58,15 @@ export class AdminController {
 
     @Get('export')
     @UsePipes(new ValidationPipe({ transform: true }))
-    async exportReport(@Query() query: ExportQueryDto) {
-        return this.adminService.exportReport(query);
+    async exportReport(@Query() query: ExportQueryDto, @Res() res: Response) {
+        const { buffer, filename, contentType } = await this.adminService.exportReport(query);
+
+        res.set({
+            'Content-Type': contentType,
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Length': buffer.length,
+        });
+
+        res.end(buffer);
     }
 }

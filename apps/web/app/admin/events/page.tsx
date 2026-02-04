@@ -80,6 +80,32 @@ export default function EventsManagementPage() {
                     </p>
                 </div>
                 <div className="flex gap-4">
+                    <button
+                        onClick={async () => {
+                            try {
+                                const response = await fetch('http://localhost:3001/api/admin/export?type=events&format=csv', {
+                                    credentials: 'include'
+                                });
+                                if (!response.ok) throw new Error('Export failed');
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `events-report-${new Date().toISOString().split('T')[0]}.csv`;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                            } catch (err) {
+                                alert('Failed to export CSV');
+                            }
+                        }}
+                        className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-[10px] font-bold text-neutral-400 uppercase tracking-widest hover:text-white hover:border-neutral-700 transition-all flex items-center gap-2"
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export CSV
+                    </button>
                     {error && (
                         <button
                             onClick={fetchEvents}
@@ -177,8 +203,8 @@ export default function EventsManagementPage() {
                                                     </span>
                                                     <div className="flex items-center gap-2">
                                                         <span className={`px-2 py-0.5 rounded text-[9px] font-black font-mono border ${event.eventType === 'TRACK'
-                                                                ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
-                                                                : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                                            ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                                                            : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                                                             }`}>
                                                             {event.eventType}
                                                         </span>
@@ -204,8 +230,8 @@ export default function EventsManagementPage() {
                                                         {event.category}
                                                     </span>
                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase border ${event.gender === 'MALE'
-                                                            ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
-                                                            : 'bg-pink-500/10 border-pink-500/20 text-pink-400'
+                                                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                                                        : 'bg-pink-500/10 border-pink-500/20 text-pink-400'
                                                         }`}>
                                                         {event.gender}
                                                     </span>
@@ -222,10 +248,10 @@ export default function EventsManagementPage() {
                                             </td>
                                             <td className="px-6 py-8 text-center">
                                                 <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter border ${status === 'COMPLETED'
-                                                        ? 'bg-neutral-500/10 border-neutral-500/20 text-neutral-400'
-                                                        : status === 'IN_PROGRESS'
-                                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                                    ? 'bg-neutral-500/10 border-neutral-500/20 text-neutral-400'
+                                                    : status === 'IN_PROGRESS'
+                                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
                                                     }`}>
                                                     {status === 'IN_PROGRESS' ? 'LIVE' : status}
                                                 </span>

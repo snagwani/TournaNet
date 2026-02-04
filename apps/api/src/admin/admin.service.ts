@@ -392,6 +392,88 @@ export class AdminService {
     }
 
     async exportReport(query: ExportQueryDto) {
-        throw new NotImplementedException(`Export for ${query.type} in ${query.format} is not yet implemented.`);
+        if (query.format !== 'csv') {
+            throw new NotImplementedException(`Format ${query.format} is not yet implemented.`);
+        }
+
+        let data: any[] = [];
+        let fields: string[] = [];
+        let filename = `report-${query.type}-${new Date().getTime()}.csv`;
+
+        switch (query.type) {
+            case 'schools':
+                const schoolReports = await this.getSchoolReports();
+                data = schoolReports.schools.map(s => ({
+                    'School Name': s.schoolName,
+                    'District': s.district,
+                    'Athletes': s.athletesCount,
+                    'Events': s.eventsParticipated,
+                    'Gold': s.gold,
+                    'Silver': s.silver,
+                    'Bronze': s.bronze,
+                    'Points': s.totalPoints
+                }));
+                fields = ['School Name', 'District', 'Athletes', 'Events', 'Gold', 'Silver', 'Bronze', 'Points'];
+                break;
+
+            case 'athletes':
+                const athleteReports = await this.getAthleteReports({});
+                data = athleteReports.athletes.map(a => ({
+                    'Name': a.athleteName,
+                    'Bib Number': a.bibNumber,
+                    'School': a.schoolName,
+                    'Category': a.category,
+                    'Gender': a.gender,
+                    'Events Count': a.eventsCount
+                }));
+                fields = ['Name', 'Bib Number', 'School', 'Category', 'Gender', 'Events Count'];
+                break;
+
+            case 'medals':
+                // Using a simpler aggregation for medal tally
+                const schools = await this.getSchoolReports();
+                data = schools.schools.map((s, idx) => ({
+                    'Rank': idx + 1,
+                    'School': s.schoolName,
+                    'District': s.district,
+                    'Gold': s.gold,
+                    'Silver': s.silver,
+                    'Bronze': s.bronze,
+                    'Total Points': s.totalPoints
+                }));
+                fields = ['Rank', 'School', 'District', 'Gold', 'Silver', 'Bronze', 'Total Points'];
+                break;
+
+            case 'events':
+                const eventReports = await this.getEventReports({});
+                data = eventReports.events.flatMap(e =>
+                    e.results.map(r => ({
+                        'Event': e.eventName,
+                        'Category': e.category,
+                        'Gender': e.gender,
+                        'Athlete': r.athleteName,
+                        'School': r.schoolName,
+                        'Bib': r.bibNumber,
+                        'Rank': r.rank || 'N/A',
+                        'Result': r.resultValue || 'N/A',
+                        'Status': r.status
+                    }))
+                );
+                fields = ['Event', 'Category', 'Gender', 'Athlete', 'School', 'Bib', 'Rank', 'Result', 'Status'];
+                break;
+
+            default:
+                throw new NotImplementedException(`Export for ${query.type} is not yet implemented.`);
+        }
+
+        const { Parser } = require('json2csv');
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(data);
+
+        return {
+            buffer: Buffer.from(csv),
+            filename,
+            contentType: 'text/csv'
+        };
     }
 }

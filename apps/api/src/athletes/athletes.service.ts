@@ -2,7 +2,7 @@ import { Injectable, Logger, BadRequestException, InternalServerErrorException, 
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateAthleteDto } from './dto/create-athlete.dto';
 import { AthleteDto } from './dto/athlete.dto';
-import { Prisma, AthleteCategory } from '@prisma/client';
+import { Prisma, AthleteCategory, Gender } from '@prisma/client';
 
 @Injectable()
 export class AthletesService {
@@ -108,5 +108,66 @@ export class AthletesService {
             this.logger.error(`Failed to create athlete: ${error instanceof Error ? error.message : 'Unknown'}`, error instanceof Error ? error.stack : undefined);
             throw new InternalServerErrorException('Failed to create athlete');
         }
+    }
+
+    async bulkImport(buffer: Buffer) {
+        const results: any[] = [];
+        const Readable = require('stream').Readable;
+        const csv = require('csv-parser');
+
+        const stream = new Readable();
+        stream.push(buffer);
+        stream.push(null);
+
+        return new Promise((resolve, reject) => {
+            stream
+                .pipe(csv())
+                .on('data', (data: any) => results.push(data))
+                .on('end', async () => {
+                    const report = {
+                        total: results.length,
+                        success: 0,
+                        failed: 0,
+                        errors: [] as string[]
+                    };
+
+                    for (const [index, row] of results.entries()) {
+                        try {
+                            // Basic validation
+                            if (!row.name || !row.gender || !row.category || !row.age || !row.schoolId) {
+                                throw new Error(`Missing required fields`);
+                            }
+
+                            const gender = row.gender.toUpperCase() as Gender;
+                            const category = row.category.toUpperCase() as AthleteCategory;
+                            const age = parseInt(row.age);
+
+                            // Validate Age
+                            const rules = this.AGE_RULES[category];
+                            if (!rules || age < rules.min || age > rules.max) {
+                                throw new Error(`Age ${age} invalid for category ${category}`);
+                            }
+
+                            // Build local DTO matching create() expectations
+                            const createDto: CreateAthleteDto = {
+                                name: row.name,
+                                age,
+                                gender,
+                                category,
+                                schoolId: row.schoolId,
+                                personalBest: row.personalBest || undefined
+                            };
+
+                            await this.create(createDto);
+                            report.success++;
+                        } catch (err: any) {
+                            report.failed++;
+                            report.errors.push(`Row ${index + 1}: ${err.message}`);
+                        }
+                    }
+                    resolve(report);
+                })
+                .on('error', (err: any) => reject(new InternalServerErrorException('CSV parsing failed')));
+        });
     }
 }
