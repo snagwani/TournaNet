@@ -11,6 +11,7 @@ interface AthleteFormData {
     category: string;
     schoolId: string;
     personalBest: string;
+    eventIds: string[]; // Add eventIds
 }
 
 interface FormErrors {
@@ -26,6 +27,13 @@ interface School {
     name: string;
 }
 
+interface Event {
+    id: string;
+    name: string;
+    gender: string;
+    category: string;
+}
+
 export default function AthleteRegistrationPage() {
     const router = useRouter();
     const [formData, setFormData] = useState<AthleteFormData>({
@@ -34,14 +42,17 @@ export default function AthleteRegistrationPage() {
         gender: '',
         category: '',
         schoolId: '',
-        personalBest: ''
+        personalBest: '',
+        eventIds: []
     });
 
     const [schools, setSchools] = useState<School[]>([]);
+    const [allEvents, setAllEvents] = useState<Event[]>([]);
+    const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-    const [bibNumber, setBibNumber] = useState<number | null>(null);
+    const [bibNumber, setBibNumber] = useState<string | null>(null);
     const { user, isLoading: authLoading } = useAuth();
     const [isUnauthorized, setIsUnauthorized] = useState(false);
 
@@ -73,12 +84,45 @@ export default function AthleteRegistrationPage() {
         }
     }, []);
 
-    // Fetch schools for dropdown
+    const fetchEvents = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:3001/api/events', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setAllEvents(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch events', err);
+        }
+    }, []);
+
+    // Fetch data for dropdowns
     useEffect(() => {
         if (user && user.role === 'ADMIN') {
             fetchSchools();
+            fetchEvents();
         }
-    }, [user, fetchSchools]);
+    }, [user, fetchSchools, fetchEvents]);
+
+    // Filter events based on gender and category
+    useEffect(() => {
+        if (formData.gender && formData.category) {
+            const filtered = allEvents.filter(e =>
+                e.gender === formData.gender && e.category === formData.category
+            );
+            setFilteredEvents(filtered);
+            // Reset selected events if they are no longer valid
+            setFormData(prev => ({
+                ...prev,
+                eventIds: prev.eventIds.filter(id => filtered.some(fe => fe.id === id))
+            }));
+        } else {
+            setFilteredEvents([]);
+            setFormData(prev => ({ ...prev, eventIds: [] }));
+        }
+    }, [formData.gender, formData.category, allEvents]);
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
@@ -131,7 +175,7 @@ export default function AthleteRegistrationPage() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleInputChange = (field: keyof AthleteFormData, value: string) => {
+    const handleInputChange = (field: keyof AthleteFormData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         // Clear error for this field when user starts typing
         if (errors[field as keyof FormErrors]) {
@@ -141,6 +185,18 @@ export default function AthleteRegistrationPage() {
         if (apiError) {
             setApiError(null);
         }
+    };
+
+    const handleEventToggle = (eventId: string) => {
+        setFormData(prev => {
+            const isSelected = prev.eventIds.includes(eventId);
+            if (isSelected) {
+                return { ...prev, eventIds: prev.eventIds.filter(id => id !== eventId) };
+            } else {
+                if (prev.eventIds.length >= 3) return prev; // Max 3 limit
+                return { ...prev, eventIds: [...prev.eventIds, eventId] };
+            }
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -170,6 +226,7 @@ export default function AthleteRegistrationPage() {
                     category: formData.category,
                     schoolId: formData.schoolId,
                     personalBest: formData.personalBest || undefined,
+                    eventIds: formData.eventIds,
                 }),
             });
 
@@ -224,7 +281,8 @@ export default function AthleteRegistrationPage() {
             gender: '',
             category: '',
             schoolId: '',
-            personalBest: ''
+            personalBest: '',
+            eventIds: []
         });
         setErrors({});
         setApiError(null);
@@ -291,7 +349,7 @@ export default function AthleteRegistrationPage() {
                     </div>
                     <div className="text-center">
                         <p className="text-sm text-green-400 mb-2">Generated Bib Number:</p>
-                        <p className="text-5xl font-black tracking-tight">{bibNumber}</p>
+                        <p className="text-5xl font-black tracking-tight font-mono">{bibNumber}</p>
                     </div>
                     <p className="text-xs text-green-400">Redirecting to Athletes list...</p>
                 </div>
@@ -464,6 +522,62 @@ export default function AthleteRegistrationPage() {
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/50 transition-colors"
                                 placeholder="e.g., 100m - 12.5s, Long Jump - 5.2m"
                             />
+                        </div>
+
+                        {/* Event Selection */}
+                        <div className="space-y-4 md:col-span-2 pt-4">
+                            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1 flex items-center justify-between">
+                                <span>Event Selection <span className="text-neutral-600 font-normal normal-case">(Max 3)</span></span>
+                                <span className={`${formData.eventIds.length === 3 ? 'text-blue-500' : 'text-neutral-600'} font-mono`}>
+                                    {formData.eventIds.length}/3
+                                </span>
+                            </label>
+
+                            {!formData.gender || !formData.category ? (
+                                <div className="p-8 border border-neutral-800 border-dashed rounded-2xl text-center">
+                                    <p className="text-xs text-neutral-600 uppercase font-bold tracking-widest">
+                                        Select Gender & Category to view available events
+                                    </p>
+                                </div>
+                            ) : filteredEvents.length === 0 ? (
+                                <div className="p-8 border border-neutral-800 border-dashed rounded-2xl text-center">
+                                    <p className="text-xs text-neutral-600 uppercase font-bold tracking-widest">
+                                        No matching events found for this category
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    {filteredEvents.map(event => {
+                                        const isSelected = formData.eventIds.includes(event.id);
+                                        const isDisabled = !isSelected && formData.eventIds.length >= 3;
+
+                                        return (
+                                            <button
+                                                key={event.id}
+                                                type="button"
+                                                onClick={() => handleEventToggle(event.id)}
+                                                disabled={isDisabled}
+                                                className={`p-4 rounded-xl border text-left transition-all group ${isSelected
+                                                    ? 'bg-blue-600/20 border-blue-500 text-white'
+                                                    : isDisabled
+                                                        ? 'opacity-40 border-neutral-800 cursor-not-allowed'
+                                                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-white'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-[10px] font-black uppercase tracking-tighter">Event</span>
+                                                    {isSelected && (
+                                                        <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs font-bold leading-tight uppercase italic">{event.name}</p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>

@@ -11,7 +11,7 @@ export class ResultSummaryDto {
 
 export class RankedResultDto {
     @Expose() athleteId: string;
-    @Expose() bibNumber: number;
+    @Expose() bibNumber: string;
     @Expose() resultValue: string | null;
     @Expose() status: ResultStatus;
     @Expose() rank: number | null;

@@ -13,7 +13,7 @@ interface Heat {
         laneNumber: number;
         athlete: {
             name: string;
-            bibNumber: number;
+            bibNumber: string;
             school: { name: string };
         };
     }[];

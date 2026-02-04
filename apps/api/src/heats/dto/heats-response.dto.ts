@@ -11,7 +11,7 @@ class LaneAssignmentDto {
     athleteName: string;
 
     @Expose()
-    bibNumber: number;
+    bibNumber: string;
 
     @Expose()
     personalBest: string | null;

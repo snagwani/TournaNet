@@ -13,9 +13,9 @@ export class ResultEntryDto {
     @IsNotEmpty()
     athleteId: string;
 
-    @IsNumber()
+    @IsString()
     @IsNotEmpty()
-    bibNumber: number;
+    bibNumber: string;
 
     @IsEnum(ResultStatus)
     @IsNotEmpty()

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 interface SchoolFormData {
     schoolName: string;
     district: string;
+    shortCode: string; // Add shortCode
     contactPersonName: string;
     contactEmail: string;
     contactPhone: string;
@@ -15,6 +16,7 @@ interface SchoolFormData {
 interface FormErrors {
     schoolName?: string;
     district?: string;
+    shortCode?: string;
     contactPersonName?: string;
     contactEmail?: string;
     contactPhone?: string;
@@ -25,6 +27,7 @@ export default function SchoolRegistrationPage() {
     const [formData, setFormData] = useState<SchoolFormData>({
         schoolName: '',
         district: '',
+        shortCode: '',
         contactPersonName: '',
         contactEmail: '',
         contactPhone: '',
@@ -68,6 +71,15 @@ export default function SchoolRegistrationPage() {
             if (!/^[\d\s\-\+\(\)]+$/.test(formData.contactPhone)) {
                 newErrors.contactPhone = 'Phone must contain only digits, spaces, dashes, plus signs, or parentheses';
             }
+        }
+
+        // Short Code validation
+        if (!formData.shortCode.trim()) {
+            newErrors.shortCode = 'Short code is required';
+        } else if (!/^[A-Z0-9]+$/.test(formData.shortCode)) {
+            newErrors.shortCode = 'Only uppercase letters and numbers allowed';
+        } else if (formData.shortCode.length < 2 || formData.shortCode.length > 10) {
+            newErrors.shortCode = 'Must be 2-10 characters';
         }
 
         setErrors(newErrors);
@@ -117,6 +129,7 @@ export default function SchoolRegistrationPage() {
             const formDataToSend = new FormData();
             formDataToSend.append('name', formData.schoolName);
             formDataToSend.append('district', formData.district);
+            formDataToSend.append('shortCode', formData.shortCode.toUpperCase());
             formDataToSend.append('contactName', formData.contactPersonName);
             formDataToSend.append('contactEmail', formData.contactEmail);
             if (formData.contactPhone) {
@@ -176,6 +189,7 @@ export default function SchoolRegistrationPage() {
         setFormData({
             schoolName: '',
             district: '',
+            shortCode: '',
             contactPersonName: '',
             contactEmail: '',
             contactPhone: '',
@@ -290,6 +304,31 @@ export default function SchoolRegistrationPage() {
                                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                     </svg>
                                     {errors.district}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Short Code */}
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                School Short Code
+                                <span className="text-red-500">*</span>
+                                <span className="text-[8px] normal-case text-neutral-600 font-normal">(Used for Bib Generation, e.g. STJS)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.shortCode}
+                                onChange={(e) => handleInputChange('shortCode', e.target.value.toUpperCase())}
+                                className={`w-full bg-neutral-900 border ${errors.shortCode ? 'border-red-500/50' : 'border-neutral-800'} rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/50 transition-colors`}
+                                placeholder="e.g. STJS"
+                                maxLength={10}
+                            />
+                            {errors.shortCode && (
+                                <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    {errors.shortCode}
                                 </p>
                             )}
                         </div>

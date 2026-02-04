@@ -27,4 +27,12 @@ export class CreateSchoolDto {
         message: 'contactPhone must contain only digits, spaces, dashes, plus signs, or parentheses',
     })
     contactPhone?: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @Length(2, 10)
+    @Matches(/^[A-Z0-9]+$/, {
+        message: 'shortCode must contain only uppercase letters and numbers',
+    })
+    shortCode: string;
 }

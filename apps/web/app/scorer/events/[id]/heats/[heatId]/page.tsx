@@ -10,14 +10,14 @@ interface Lane {
     athleteId: string;
     athlete: {
         name: string;
-        bibNumber: number;
+        bibNumber: string;
         school: { name: string };
     };
 }
 
 interface Result {
     athleteId: string;
-    bibNumber: number;
+    bibNumber: string;
     status: 'FINISHED' | 'DNS' | 'DNF' | 'DQ';
     resultValue: string;
     notes?: string;

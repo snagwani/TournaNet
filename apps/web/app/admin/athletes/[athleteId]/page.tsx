@@ -19,7 +19,7 @@ interface EventResult {
 interface AthleteDetail {
     athleteId: string;
     athleteName: string;
-    bibNumber: number;
+    bibNumber: string;
     schoolName: string;
     category: string;
     gender: string;
@@ -123,7 +123,7 @@ export default function AthleteDetailPage() {
                     <div className="text-right">
                         <span className="text-[10px] text-neutral-700 uppercase font-mono tracking-widest block mb-1">Athlete Passport • ID: {athlete.athleteId.slice(0, 8)}</span>
                         <span className="px-3 py-1 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-400 font-mono text-xs uppercase tracking-tight">
-                            #{athlete.bibNumber}
+                            {athlete.bibNumber}
                         </span>
                     </div>
                 </header>

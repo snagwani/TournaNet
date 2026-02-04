@@ -41,6 +41,7 @@ model School {
     contactEmail String   @db.VarChar(255)
     contactPhone String?  @db.VarChar(20)
     logoUrl      String?  @db.VarChar(255)
+    shortCode    String   @unique @db.VarChar(10) // For Bib generation (e.g., 'STJS')
     createdAt    DateTime @default(now())
     updatedAt    DateTime @updatedAt
 
@@ -67,7 +68,7 @@ model Athlete {
     gender       Gender
     category     AthleteCategory
     personalBest String?
-    bibNumber    Int             @unique @default(autoincrement())
+    bibNumber    String          @unique // Format: DIST-SCHOOL-001
     schoolId     String
     school       School          @relation(fields: [schoolId], references: [id])
     createdAt    DateTime        @default(now())
@@ -75,8 +76,9 @@ model Athlete {
 
     @@unique([name, age, schoolId])
     @@map("athletes")
-    heatLanes HeatLane[]
-    results   Result[]
+    heatLanes     HeatLane[]
+    results       Result[]
+    registrations EventRegistration[]
 }
 
 enum EventType {
@@ -99,7 +101,8 @@ model Event {
 
     @@unique([name, gender, category])
     @@map("events")
-    heats Heat[]
+    heats         Heat[]
+    registrations EventRegistration[]
 }
 
 model Heat {
@@ -143,7 +146,7 @@ model Result {
     heat        Heat         @relation(fields: [heatId], references: [id])
     athleteId   String
     athlete     Athlete      @relation(fields: [athleteId], references: [id])
-    bibNumber   Int
+    bibNumber   String
     resultValue String?      // "10.5s" or "5.62m"
     status      ResultStatus
     rank        Int?
@@ -153,4 +156,16 @@ model Result {
 
     @@unique([heatId, athleteId]) // One result per athlete per heat
     @@map("results")
+}
+
+model EventRegistration {
+    id        String   @id @default(uuid())
+    athleteId String
+    athlete   Athlete  @relation(fields: [athleteId], references: [id])
+    eventId   String
+    event     Event    @relation(fields: [eventId], references: [id])
+    createdAt DateTime @default(now())
+
+    @@unique([athleteId, eventId])
+    @@map("event_registrations")
 }

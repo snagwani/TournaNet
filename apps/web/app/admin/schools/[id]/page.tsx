@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 interface AthletePerformance {
     athleteId: string;
     name: string;
-    bibNumber: number;
+    bibNumber: string;
     category: string;
     gender: string;
     gold: number;

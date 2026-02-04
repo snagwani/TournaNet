@@ -283,12 +283,11 @@ export class ScoreboardService {
     async searchAthletes(dto: AthleteSearchQueryDto) {
         return this.getCached(`search-${dto.q}`, async () => {
             // Handle "Bib Number" vs "Name"
-            // Try parsing int
-            const bibSearch = parseInt(dto.q);
-            const isBib = !isNaN(bibSearch);
+            // Check if query looks like a bib number (must contain at least one hyphen to match the pattern: DISTRICT-SCHOOL-NUMBER)
+            const looksLikeBib = /^[A-Z0-9]+-[A-Z0-9\-]+$/i.test(dto.q.trim());
 
-            const whereClause: Prisma.AthleteWhereInput = isBib
-                ? { bibNumber: bibSearch }
+            const whereClause: Prisma.AthleteWhereInput = looksLikeBib
+                ? { bibNumber: { contains: dto.q.trim(), mode: 'insensitive' } }
                 : { name: { contains: dto.q, mode: 'insensitive' } };
 
             const athletes = await this.prisma.athlete.findMany({

@@ -8,7 +8,7 @@ import { useAdminReport } from '@/hooks/useAdminReport';
 interface AthletePerformance {
     athleteId: string;
     athleteName: string;
-    bibNumber: number;
+    bibNumber: string;
     schoolName: string;
     category: string;
     gender: string;
@@ -249,7 +249,7 @@ export default function AthletesReportPage() {
                                         </td>
                                         <td className="px-6 py-6 text-center">
                                             <span className="px-3 py-1 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-400 font-mono text-xs uppercase tracking-tight">
-                                                #{athlete.bibNumber}
+                                                {athlete.bibNumber}
                                             </span>
                                         </td>
                                         <td className="px-6 py-6">

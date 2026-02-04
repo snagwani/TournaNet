@@ -35,16 +35,18 @@ export class HeatsService {
                 throw new BadRequestException('Event rules missing maxAthletesPerHeat');
             }
 
-            // 3. Fetch Eligible Athletes
-            const athletes = await tx.athlete.findMany({
-                where: {
-                    gender: event.gender,
-                    category: event.category
+            // 3. Fetch Registered Athletes
+            const registrations = await tx.eventRegistration.findMany({
+                where: { eventId },
+                include: {
+                    athlete: true
                 }
             });
 
+            const athletes = registrations.map(r => r.athlete);
+
             if (athletes.length === 0) {
-                throw new BadRequestException('No eligible athletes found for this event');
+                throw new BadRequestException('No athletes registered for this event');
             }
 
             // 4. Seeding Logic

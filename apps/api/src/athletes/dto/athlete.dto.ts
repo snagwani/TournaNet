@@ -6,7 +6,7 @@ export class AthleteDto {
     id: string;
 
     @Expose()
-    bibNumber: number;
+    bibNumber: string;
 
     @Expose()
     name: string;

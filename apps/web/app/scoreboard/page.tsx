@@ -6,7 +6,7 @@ type TabType = 'current' | 'upcoming' | 'results' | 'tally' | 'search';
 
 interface ScoreboardResult {
     athleteId: string;
-    bibNumber: number;
+    bibNumber: string;
     athleteName: string;
     schoolName: string;
     resultValue: string | null;
@@ -55,7 +55,7 @@ interface MedalTallySchool {
 interface AthleteSearchResult {
     athleteId: string;
     athleteName: string;
-    bibNumber: number;
+    bibNumber: string;
     schoolName: string;
     events: {
         eventName: string;

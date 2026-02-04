@@ -50,6 +50,7 @@ export class SchoolsService {
                         contactEmail: createSchoolDto.contactEmail,
                         contactPhone: createSchoolDto.contactPhone ?? null,
                         logoUrl: logoUrl ?? null,
+                        shortCode: createSchoolDto.shortCode.toUpperCase(),
                     },
                 });
 

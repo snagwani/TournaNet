@@ -13,7 +13,7 @@ interface ResultEntry {
     athleteId: string;
     athleteName: string;
     schoolName: string;
-    bibNumber: number;
+    bibNumber: string;
     status: string;
     resultValue: string | null;
     rank: number | null;
@@ -240,7 +240,7 @@ export default function EventDetailPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-5 text-right font-mono text-[10px] text-neutral-600">
-                                                        {result.bibNumber.toString().padStart(3, '0')}
+                                                        #{result.bibNumber}
                                                     </td>
                                                 </tr>
                                             );

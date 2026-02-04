@@ -24,4 +24,8 @@ export class CreateAthleteDto {
     @IsOptional()
     @IsString()
     personalBest?: string;
+
+    @IsOptional()
+    @IsUUID('all', { each: true })
+    eventIds?: string[];
 }
