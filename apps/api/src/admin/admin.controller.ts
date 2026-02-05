@@ -64,9 +64,9 @@ export class AdminController {
         res.set({
             'Content-Type': contentType,
             'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': buffer.length,
+            'Content-Length': buffer.length.toString(),
         });
 
-        res.end(buffer);
+        res.send(buffer);
     }
 }

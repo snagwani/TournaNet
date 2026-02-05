@@ -32,7 +32,7 @@
         "class-validator": "^0.14.1",
         "cookie-parser": "^1.4.7",
         "csv-parser": "^3.2.0",
-        "json2csv": "^6.0.0-alpha.2",
+        "json2csv": "^5.0.7",
         "passport": "^0.7.0",
         "passport-jwt": "^4.0.1",
         "reflect-metadata": "^0.2.1",

@@ -3,6 +3,9 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AthleteReportQueryDto, EventReportQueryDto, ExportQueryDto } from './dto/admin-query.dto';
 import { AthleteCategory, Gender, ResultStatus, Prisma, EventType } from '@prisma/client';
 
+const { Parser } = require('json2csv');
+const BOM = '\uFEFF';
+
 @Injectable()
 export class AdminService {
     private readonly logger = new Logger(AdminService.name);
@@ -75,20 +78,38 @@ export class AdminService {
             const eventIds = new Set<string>();
 
             s.athletes.forEach(a => {
+                // Group by eventId to ensure we only count one medal per athlete per event (best result)
+                const bestResultsPerEvent = new Map<string, { rank: number | null, status: ResultStatus }>();
+
                 a.results.forEach(r => {
-                    // eventId is available via heat.eventId because it's selected above
                     if (r.heat) {
                         eventIds.add(r.heat.eventId);
+
+                        const current = bestResultsPerEvent.get(r.heat.eventId);
+                        const isBetter = !current || (r.rank !== null && (current.rank === null || r.rank < current.rank));
+
+                        // We prioritize FINISHED status and lower ranks
+                        if (r.status === ResultStatus.FINISHED) {
+                            if (!current || current.status !== ResultStatus.FINISHED || (r.rank !== null && (current.rank === null || r.rank < current.rank))) {
+                                bestResultsPerEvent.set(r.heat.eventId, { rank: r.rank, status: r.status });
+                            }
+                        } else if (!current) {
+                            bestResultsPerEvent.set(r.heat.eventId, { rank: r.rank, status: r.status });
+                        }
                     }
-                    if (r.status === ResultStatus.FINISHED) {
-                        if (r.rank === 1) { gold++; points += 10; }
-                        else if (r.rank === 2) { silver++; points += 8; }
-                        else if (r.rank === 3) { bronze++; points += 6; }
-                        else if (r.rank === 4) { points += 5; }
-                        else if (r.rank === 5) { points += 4; }
-                        else if (r.rank === 6) { points += 3; }
-                        else if (r.rank === 7) { points += 2; }
-                        else if (r.rank === 8) { points += 1; }
+                });
+
+                // Now iterate over the unique best results for this athlete
+                bestResultsPerEvent.forEach(res => {
+                    if (res.status === ResultStatus.FINISHED) {
+                        if (res.rank === 1) { gold++; points += 10; }
+                        else if (res.rank === 2) { silver++; points += 8; }
+                        else if (res.rank === 3) { bronze++; points += 6; }
+                        else if (res.rank === 4) { points += 5; }
+                        else if (res.rank === 5) { points += 4; }
+                        else if (res.rank === 6) { points += 3; }
+                        else if (res.rank === 7) { points += 2; }
+                        else if (res.rank === 8) { points += 1; }
                     }
                 });
             });
@@ -510,14 +531,14 @@ export class AdminService {
                 throw new NotImplementedException(`Export for ${query.type} is not yet implemented.`);
         }
 
-        const { Parser } = require('json2csv');
         const json2csvParser = new Parser({ fields });
         const csv = json2csvParser.parse(data);
+        const csvWithBom = BOM + csv;
 
         return {
-            buffer: Buffer.from(csv),
+            buffer: Buffer.from(csvWithBom, 'utf-8'),
             filename,
-            contentType: 'text/csv'
+            contentType: 'text/csv; charset=utf-8'
         };
     }
 }
