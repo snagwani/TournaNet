@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../app/context/AuthContext';
+import { useTimezone } from '@/app/context/TimezoneContext';
+import { formatTournamentTime, TOURNAMENT_TIMEZONE } from '@/lib/timeUtils';
+import { fromZonedTime } from 'date-fns-tz';
 
 interface Conflict {
     type: 'LUNCH_VIOLATION' | 'ATHLETE_CONFLICT' | 'REST_VIOLATION';
@@ -32,6 +35,7 @@ interface ScheduleResponse {
 export default function SchedulePage() {
     const router = useRouter();
     const { user } = useAuth();
+    const { timezone } = useTimezone();
 
     const [formData, setFormData] = useState({
         startDate: '',
@@ -249,8 +253,8 @@ export default function SchedulePage() {
                                     <button
                                         onClick={() => setConflictFilter('ALL')}
                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${conflictFilter === 'ALL'
-                                                ? 'bg-amber-500 text-black'
-                                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                            ? 'bg-amber-500 text-black'
+                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                                             }`}
                                     >
                                         All
@@ -258,8 +262,8 @@ export default function SchedulePage() {
                                     <button
                                         onClick={() => setConflictFilter('LUNCH_VIOLATION')}
                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${conflictFilter === 'LUNCH_VIOLATION'
-                                                ? 'bg-red-500 text-white'
-                                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                            ? 'bg-red-500 text-white'
+                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                                             }`}
                                     >
                                         Lunch
@@ -267,8 +271,8 @@ export default function SchedulePage() {
                                     <button
                                         onClick={() => setConflictFilter('ATHLETE_CONFLICT')}
                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${conflictFilter === 'ATHLETE_CONFLICT'
-                                                ? 'bg-orange-500 text-white'
-                                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                            ? 'bg-orange-500 text-white'
+                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                                             }`}
                                     >
                                         Athlete
@@ -276,8 +280,8 @@ export default function SchedulePage() {
                                     <button
                                         onClick={() => setConflictFilter('REST_VIOLATION')}
                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${conflictFilter === 'REST_VIOLATION'
-                                                ? 'bg-yellow-500 text-black'
-                                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                            ? 'bg-yellow-500 text-black'
+                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                                             }`}
                                     >
                                         Rest
@@ -294,13 +298,16 @@ export default function SchedulePage() {
                                 key={index}
                                 onClick={() => setSelectedDay(index)}
                                 className={`px-6 py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${selectedDay === index
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                                        : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800'
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                                    : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800'
                                     }`}
                             >
                                 Day {index + 1}
                                 <span className="ml-2 text-xs opacity-70">
-                                    {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    {(() => {
+                                        const d = fromZonedTime(`${day.date} 00:00:00`, TOURNAMENT_TIMEZONE);
+                                        return formatTournamentTime(d, 'MMM d', timezone);
+                                    })()}
                                 </span>
                             </button>
                         ))}
@@ -310,12 +317,10 @@ export default function SchedulePage() {
                     <section className="bg-neutral-900/30 border border-neutral-800 rounded-3xl overflow-hidden">
                         <div className="p-6 border-b border-neutral-800 bg-neutral-900/50">
                             <h2 className="text-lg font-black text-white uppercase tracking-tight">
-                                {new Date(schedule.days[selectedDay].date).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                })}
+                                {(() => {
+                                    const d = fromZonedTime(`${schedule.days[selectedDay].date} 00:00:00`, TOURNAMENT_TIMEZONE);
+                                    return formatTournamentTime(d, 'EEEE, MMMM d, yyyy', timezone);
+                                })()}
                             </h2>
                         </div>
 
@@ -329,7 +334,10 @@ export default function SchedulePage() {
                                             className="absolute text-xs font-mono text-neutral-600 -translate-y-2"
                                             style={{ top: `${((hour - 8) / 9) * 100}%` }}
                                         >
-                                            {hour.toString().padStart(2, '0')}:00
+                                            {(() => {
+                                                const d = fromZonedTime(`${schedule.days[selectedDay].date} ${hour.toString().padStart(2, '0')}:00:00`, TOURNAMENT_TIMEZONE);
+                                                return formatTournamentTime(d, 'HH:mm', timezone);
+                                            })()}
                                         </div>
                                     ))}
                                 </div>
@@ -374,7 +382,11 @@ export default function SchedulePage() {
                                                         )}
                                                     </div>
                                                     <p className="text-orange-200 font-mono text-[10px]">
-                                                        {event.startTime} - {event.endTime}
+                                                        {(() => {
+                                                            const start = fromZonedTime(`${schedule.days[selectedDay].date} ${event.startTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            const end = fromZonedTime(`${schedule.days[selectedDay].date} ${event.endTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            return `${formatTournamentTime(start, 'HH:mm', timezone)} - ${formatTournamentTime(end, 'HH:mm', timezone)}`;
+                                                        })()}
                                                     </p>
                                                     {event.venue && (
                                                         <p className="text-orange-300 text-[9px] mt-1 truncate">
@@ -426,7 +438,11 @@ export default function SchedulePage() {
                                                         )}
                                                     </div>
                                                     <p className="text-blue-200 font-mono text-[10px]">
-                                                        {event.startTime} - {event.endTime}
+                                                        {(() => {
+                                                            const start = fromZonedTime(`${schedule.days[selectedDay].date} ${event.startTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            const end = fromZonedTime(`${schedule.days[selectedDay].date} ${event.endTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            return `${formatTournamentTime(start, 'HH:mm', timezone)} - ${formatTournamentTime(end, 'HH:mm', timezone)}`;
+                                                        })()}
                                                     </p>
                                                     {event.venue && (
                                                         <p className="text-blue-300 text-[9px] mt-1 truncate">
@@ -456,12 +472,16 @@ export default function SchedulePage() {
                                                 <div>
                                                     <p className="text-white font-black text-sm">{event.name}</p>
                                                     <p className="text-neutral-500 text-xs font-mono">
-                                                        {event.startTime} - {event.endTime}
+                                                        {(() => {
+                                                            const start = fromZonedTime(`${schedule.days[selectedDay].date} ${event.startTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            const end = fromZonedTime(`${schedule.days[selectedDay].date} ${event.endTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            return `${formatTournamentTime(start, 'HH:mm', timezone)} - ${formatTournamentTime(end, 'HH:mm', timezone)}`;
+                                                        })()}
                                                     </p>
                                                 </div>
                                                 <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${event.eventType === 'TRACK'
-                                                        ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
-                                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                                    ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                                                    : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                                                     }`}>
                                                     {event.eventType}
                                                 </span>
@@ -471,10 +491,10 @@ export default function SchedulePage() {
                                                     <div
                                                         key={cIdx}
                                                         className={`flex items-start gap-2 p-2 rounded-lg border ${conflict.type === 'LUNCH_VIOLATION'
-                                                                ? 'bg-red-500/10 border-red-500/20'
-                                                                : conflict.type === 'ATHLETE_CONFLICT'
-                                                                    ? 'bg-orange-500/10 border-orange-500/20'
-                                                                    : 'bg-yellow-500/10 border-yellow-500/20'
+                                                            ? 'bg-red-500/10 border-red-500/20'
+                                                            : conflict.type === 'ATHLETE_CONFLICT'
+                                                                ? 'bg-orange-500/10 border-orange-500/20'
+                                                                : 'bg-yellow-500/10 border-yellow-500/20'
                                                             }`}
                                                     >
                                                         <span className="text-lg">
@@ -483,10 +503,10 @@ export default function SchedulePage() {
                                                         </span>
                                                         <div className="flex-1">
                                                             <p className={`text-xs font-bold uppercase tracking-wider ${conflict.type === 'LUNCH_VIOLATION'
-                                                                    ? 'text-red-400'
-                                                                    : conflict.type === 'ATHLETE_CONFLICT'
-                                                                        ? 'text-orange-400'
-                                                                        : 'text-yellow-400'
+                                                                ? 'text-red-400'
+                                                                : conflict.type === 'ATHLETE_CONFLICT'
+                                                                    ? 'text-orange-400'
+                                                                    : 'text-yellow-400'
                                                                 }`}>
                                                                 {conflict.type.replace(/_/g, ' ')}
                                                             </p>

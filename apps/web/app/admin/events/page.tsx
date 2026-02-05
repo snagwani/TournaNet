@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../app/context/AuthContext';
+import { useTimezone } from '@/app/context/TimezoneContext';
+import { formatTournamentTime, TOURNAMENT_TIMEZONE } from '@/lib/timeUtils';
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 interface Event {
     id: string;
@@ -22,6 +25,7 @@ export default function EventsManagementPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { user } = useAuth();
+    const { timezone } = useTimezone();
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
@@ -54,13 +58,17 @@ export default function EventsManagementPage() {
     }, [user, fetchEvents]);
 
     const getEventStatus = (event: Event) => {
-        const eventDate = new Date(event.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        eventDate.setHours(0, 0, 0, 0);
+        // Use Tournament Time for status calculation to stay consistent
+        const now = new Date();
+        const eventStart = fromZonedTime(`${event.date.split('T')[0]} ${event.startTime}:00`, TOURNAMENT_TIMEZONE);
 
-        if (eventDate < today) return 'COMPLETED';
-        if (eventDate.getTime() === today.getTime()) return 'IN_PROGRESS';
+        // Simple heuristic: if it started more than 2 hours ago, assume completed if no heats in progress
+        // Actually, let's just stick to the day logic for now but make it timezone-aware
+        const todayStr = formatInTimeZone(now, TOURNAMENT_TIMEZONE, 'yyyy-MM-dd');
+        const eventDateStr = event.date.split('T')[0];
+
+        if (eventDateStr < todayStr) return 'COMPLETED';
+        if (eventDateStr === todayStr) return 'IN_PROGRESS';
         return 'UPCOMING';
     };
 
@@ -217,10 +225,13 @@ export default function EventsManagementPage() {
                                             <td className="px-6 py-8 text-center">
                                                 <div className="space-y-1">
                                                     <p className="text-neutral-400 font-mono text-[11px] font-bold">
-                                                        {new Date(event.date).toLocaleDateString()}
+                                                        {formatInTimeZone(new Date(event.date), timezone, 'yyyy-MM-dd')}
                                                     </p>
                                                     <p className="text-neutral-600 font-mono text-[10px]">
-                                                        {event.startTime}
+                                                        {(() => {
+                                                            const d = fromZonedTime(`${event.date.split('T')[0]} ${event.startTime}:00`, TOURNAMENT_TIMEZONE);
+                                                            return formatTournamentTime(d, 'HH:mm', timezone);
+                                                        })()} {timezone === TOURNAMENT_TIMEZONE ? 'IST' : ''}
                                                     </p>
                                                 </div>
                                             </td>

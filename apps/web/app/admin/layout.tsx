@@ -3,6 +3,7 @@
 import React from 'react';
 import RequireAuth from '../../components/RequireAuth';
 import LogoutButton from '../../components/LogoutButton';
+import { TimezoneSelector } from '@/components/TimezoneSelector';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -50,7 +51,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </div>
                         </div>
 
-                        <LogoutButton />
+                        <div className="flex items-center gap-4">
+                            <TimezoneSelector />
+                            <LogoutButton />
+                        </div>
                     </div>
                 </nav>
                 {children}

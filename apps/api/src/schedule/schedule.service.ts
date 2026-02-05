@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GenerateScheduleDto } from './dto/generate-schedule.dto';
 import { EventType, Event } from '@prisma/client';
+import { TOURNAMENT_TIMEZONE } from '../common/constants';
+import { formatInTimeZone } from 'date-fns-tz';
 
 @Injectable()
 export class ScheduleService {
@@ -41,11 +43,11 @@ export class ScheduleService {
         // Process Track Events
         const scheduledTrackEvents = [];
 
-        // Helper to get current Date string
+        // Helper to get current Date string in Tournament Timezone
         const getDateString = (dayIdx: number) => {
             const d = new Date(startDate);
             d.setDate(d.getDate() + dayIdx);
-            return d.toISOString().split('T')[0];
+            return formatInTimeZone(d, TOURNAMENT_TIMEZONE, 'yyyy-MM-dd');
         };
 
         for (const event of trackEvents) {

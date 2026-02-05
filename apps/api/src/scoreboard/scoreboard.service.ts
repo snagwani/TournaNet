@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { UpcomingQueryDto, ResultsQueryDto, AthleteSearchQueryDto } from './dto/scoreboard-query.dto';
 import { Prisma, ResultStatus } from '@prisma/client';
+import { TOURNAMENT_TIMEZONE } from '../common/constants';
+import { fromZonedTime } from 'date-fns-tz';
+import { formatInTimeZone } from 'date-fns-tz';
 
 @Injectable()
 export class ScoreboardService {
@@ -36,8 +39,8 @@ export class ScoreboardService {
             const events = await this.prisma.event.findMany({
                 where: {
                     date: {
-                        gte: new Date(new Date().setHours(0, 0, 0, 0)),
-                        lte: new Date(new Date().setHours(23, 59, 59, 999))
+                        gte: fromZonedTime(formatInTimeZone(new Date(), TOURNAMENT_TIMEZONE, 'yyyy-MM-dd'), TOURNAMENT_TIMEZONE),
+                        lte: fromZonedTime(formatInTimeZone(new Date(), TOURNAMENT_TIMEZONE, 'yyyy-MM-dd') + 'T23:59:59.999', TOURNAMENT_TIMEZONE)
                     }
                 },
                 include: {
@@ -102,7 +105,7 @@ export class ScoreboardService {
 
             const events = await this.prisma.event.findMany({
                 where: {
-                    date: { gte: new Date(now.setHours(0, 0, 0, 0)) }
+                    date: { gte: fromZonedTime(formatInTimeZone(new Date(), TOURNAMENT_TIMEZONE, 'yyyy-MM-dd'), TOURNAMENT_TIMEZONE) }
                 },
                 orderBy: [
                     { date: 'asc' },
@@ -122,6 +125,7 @@ export class ScoreboardService {
                     name: e.name,
                     eventType: e.eventType,
                     startTime: e.startTime,
+                    date: e.date,
                     venue: e.venue,
                     category: e.category,
                     gender: e.gender
@@ -335,11 +339,7 @@ export class ScoreboardService {
 
     private combineDateTime(date: Date, timeStr: string): Date {
         const [hh, mm] = timeStr.split(':').map(Number);
-        // Prisma Date is at midnight UTC. We want to apply the time in the same context.
-        const d = new Date(date);
-        d.setUTCHours(hh, mm, 0, 0);
-        // Note: If the tournament is in a specific timezone, this should be adjusted.
-        // For now, using setUTCHours to match the UTC-based Date object from Prisma.
-        return d;
+        const dateStr = formatInTimeZone(date, TOURNAMENT_TIMEZONE, 'yyyy-MM-dd');
+        return fromZonedTime(`${dateStr} ${timeStr}:00`, TOURNAMENT_TIMEZONE);
     }
 }

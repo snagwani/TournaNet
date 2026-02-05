@@ -104,22 +104,35 @@ async function main() {
 
     // 4. Create Athletes
     const athleteRecords = [];
-    const names = [
-        'Rajesh Kumar', 'Amit Singh', 'Priya Sharma', 'Neha Patel',
-        'Vikram Rao', 'Sneha Gupta', 'Arjun Mehta', 'Pooja Desai',
-        'Karan Verma', 'Anjali Joshi', 'Rohit Nair', 'Divya Iyer',
-        'Siddharth Shah', 'Kavya Reddy', 'Aditya Kulkarni', 'Riya Malhotra',
-        'Varun Chopra', 'Ishita Bansal', 'Nikhil Agarwal', 'Tanvi Saxena'
+    const maleNames = [
+        'Rajesh Kumar', 'Amit Singh', 'Vikram Rao', 'Arjun Mehta',
+        'Karan Verma', 'Rohit Nair', 'Siddharth Shah', 'Aditya Kulkarni',
+        'Varun Chopra', 'Nikhil Agarwal'
+    ];
+    const femaleNames = [
+        'Priya Sharma', 'Neha Patel', 'Sneha Gupta', 'Pooja Desai',
+        'Anjali Joshi', 'Divya Iyer', 'Kavya Reddy', 'Riya Malhotra',
+        'Ishita Bansal', 'Tanvi Saxena'
     ];
 
-    let athleteIndex = 0;
+    let maleNameIndex = 0;
+    let femaleNameIndex = 0;
     for (const school of schoolRecords) {
         const distCode = school.district.substring(0, 3).toUpperCase();
         for (let i = 0; i < 8; i++) {
             const gender = i < 4 ? Gender.MALE : Gender.FEMALE;
             const category = i % 2 === 0 ? AthleteCategory.U14 : AthleteCategory.U17;
             const age = category === AthleteCategory.U14 ? 13 : 16;
-            const name = names[athleteIndex % names.length];
+
+            let name = '';
+            if (gender === Gender.MALE) {
+                name = maleNames[maleNameIndex % maleNames.length];
+                maleNameIndex++;
+            } else {
+                name = femaleNames[femaleNameIndex % femaleNames.length];
+                femaleNameIndex++;
+            }
+
             const bibNumber = `${distCode}-${school.shortCode}-${(i + 1).toString().padStart(3, '0')}`;
 
             const athlete = await prisma.athlete.upsert({
@@ -150,7 +163,6 @@ async function main() {
                     create: { athleteId: athlete.id, eventId: event.id }
                 });
             }
-            athleteIndex++;
         }
     }
     console.log(`✅ ${athleteRecords.length} Athletes Created and Registered`);

@@ -4,6 +4,8 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventDto } from './dto/event.dto';
 import { Prisma, EventType } from '@prisma/client';
+import { TOURNAMENT_TIMEZONE } from '../common/constants';
+import { fromZonedTime } from 'date-fns-tz';
 
 @Injectable()
 export class EventsService {
@@ -14,7 +16,8 @@ export class EventsService {
     async findAll(date?: string): Promise<EventDto[]> {
         const where: Prisma.EventWhereInput = {};
         if (date) {
-            where.date = new Date(date);
+            // Convert the date string (e.g., "2026-02-05") to a UTC Date object representing that day in Tournament Time
+            where.date = fromZonedTime(date, TOURNAMENT_TIMEZONE);
         }
 
         const events = await this.prisma.event.findMany({
@@ -78,7 +81,7 @@ export class EventsService {
                 where: { id },
                 data: {
                     ...dto,
-                    date: dto.date ? new Date(dto.date) : undefined
+                    date: dto.date ? fromZonedTime(dto.date, TOURNAMENT_TIMEZONE) : undefined
                 },
             });
 
@@ -105,7 +108,7 @@ export class EventsService {
                     eventType: createEventDto.eventType,
                     gender: createEventDto.gender,
                     category: createEventDto.category,
-                    date: new Date(createEventDto.date),
+                    date: fromZonedTime(createEventDto.date, TOURNAMENT_TIMEZONE),
                     startTime: createEventDto.startTime,
                     venue: createEventDto.venue,
                     rules: createEventDto.rules as Prisma.InputJsonValue,

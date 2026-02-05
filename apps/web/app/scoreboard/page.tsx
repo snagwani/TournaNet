@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTimezone } from '@/app/context/TimezoneContext';
+import { formatTournamentTime, TOURNAMENT_TIMEZONE } from '@/lib/timeUtils';
+import { fromZonedTime } from 'date-fns-tz';
+import { TimezoneSelector } from '@/components/TimezoneSelector';
 
 type TabType = 'current' | 'upcoming' | 'results' | 'tally' | 'search';
 
@@ -30,6 +34,7 @@ interface ScoreboardUpcomingEvent {
     name: string;
     eventType: 'TRACK' | 'FIELD';
     startTime: string;
+    date: string;
     venue: string | null;
     category: string;
     gender: string;
@@ -67,6 +72,7 @@ interface AthleteSearchResult {
 }
 
 export default function ScoreboardPage() {
+    const { timezone } = useTimezone();
     const [activeTab, setActiveTab] = useState<TabType>('current');
     const [liveEvents, setLiveEvents] = useState<ScoreboardEvent[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<ScoreboardUpcomingEvent[]>([]);
@@ -367,8 +373,25 @@ export default function ScoreboardPage() {
                                 )}
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">Starts At</p>
-                                <p className="text-2xl font-black italic text-white tracking-tight">{event.startTime}</p>
+                                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">
+                                    Starts At ({timezone === TOURNAMENT_TIMEZONE ? 'IST' : 'Local'})
+                                </p>
+                                <p className="text-2xl font-black italic text-white tracking-tight">
+                                    {(() => {
+                                        // Combine date and time to get a real point in time
+                                        const eventDate = new Date(event.date);
+                                        const [hh, mm] = event.startTime.split(':');
+                                        eventDate.setUTCHours(parseInt(hh), parseInt(mm), 0, 0);
+
+                                        // Actually, the backend's combineDateTime logic is:
+                                        // fromZonedTime(`${dateStr} ${timeStr}:00`, TOURNAMENT_TIMEZONE)
+                                        // So the 'startTime' in the DB is relative to Tournament Time.
+
+                                        // Let's use our utility
+                                        const d = fromZonedTime(`${event.date.split('T')[0]} ${event.startTime}:00`, TOURNAMENT_TIMEZONE);
+                                        return formatTournamentTime(d, 'HH:mm', timezone);
+                                    })()}
+                                </p>
                             </div>
                         </div>
                     </article>
@@ -793,10 +816,13 @@ export default function ScoreboardPage() {
             <div className="relative max-w-6xl mx-auto px-4 py-8 md:py-16">
                 {/* Header */}
                 <header className="mb-12 text-center space-y-4">
-                    <div className="inline-block px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full mb-2">
-                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em]">
-                            Official Tournament Hub
-                        </span>
+                    <div className="flex items-center justify-center gap-4">
+                        <div className="inline-block px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
+                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em]">
+                                Official Tournament Hub
+                            </span>
+                        </div>
+                        <TimezoneSelector />
                     </div>
                     <h1 className="text-4xl md:text-6xl font-black tracking-tight uppercase italic flex flex-col items-center">
                         <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-neutral-500">
