@@ -1,4 +1,6 @@
 import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Readable } from 'stream';
+import * as csv from 'csv-parser';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { SchoolDto } from './dto/school.dto';
@@ -69,5 +71,130 @@ export class SchoolsService {
             this.logger.error(`Error creating school: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
             throw new InternalServerErrorException('Failed to create school');
         }
+    }
+
+    async bulkImport(buffer: Buffer) {
+        this.logger.log('Starting bulk import of schools...');
+
+        // Detect delimiter
+        const contentPreview = buffer.toString('utf-8', 0, 2048);
+        const headerLine = contentPreview.split(/[\r\n]+/)[0];
+        const counts = {
+            ',': (headerLine.match(/,/g) || []).length,
+            ';': (headerLine.match(/;/g) || []).length,
+            '\t': (headerLine.match(/\t/g) || []).length
+        };
+        let delimiter = ',';
+        if (counts[';'] > counts[',']) delimiter = ';';
+        if (counts['\t'] > counts[','] && counts['\t'] > counts[';']) delimiter = '\t';
+
+        this.logger.log(`School import info: Line1: [${headerLine}] Delimiter: "${delimiter === '\t' ? '\\t' : delimiter}"`);
+
+        const results: any[] = [];
+        const stream = new Readable();
+        stream.push(buffer);
+        stream.push(null);
+
+        return new Promise((resolve, reject) => {
+            stream
+                .pipe(csv({
+                    separator: delimiter,
+                    mapHeaders: ({ header }) => {
+                        return header
+                            .replace(/^\uFEFF/, '')
+                            .replace(/"/g, '')
+                            .trim()
+                            .toLowerCase()
+                            .replace(/ /g, '')
+                            .replace(/_/g, '');
+                    }
+                }))
+                .on('data', (data: any) => {
+                    results.push(data);
+                })
+                .on('end', async () => {
+                    this.logger.log(`Finished parsing CSV. Total rows found: ${results.length}`);
+                    const report = {
+                        total: results.length,
+                        success: 0,
+                        failed: 0,
+                        errors: [] as string[]
+                    };
+
+                    const clean = (val: any) => (val || '').toString().trim().replace(/^"|"$/g, '');
+
+                    for (const [index, row] of results.entries()) {
+                        try {
+                            const findValue = (searchKeys: string[]) => {
+                                for (const searchKey of searchKeys) {
+                                    const foundKey = Object.keys(row).find(k => {
+                                        const cleanK = k.replace(/"/g, '').toLowerCase().replace(/ /g, '').replace(/_/g, '');
+                                        return searchKey === cleanK;
+                                    });
+                                    if (foundKey) return clean(row[foundKey]);
+                                }
+                                return '';
+                            };
+
+                            const name = findValue(['name', 'schoolname', 'school']);
+                            const district = findValue(['district', 'city', 'location']);
+                            const shortCode = findValue(['shortcode', 'code', 'acronym']);
+                            const contactName = findValue(['contactname', 'principal', 'head', 'contact']);
+                            const contactEmail = findValue(['contactemail', 'email', 'emailaddress']);
+                            const contactPhone = findValue(['contactphone', 'phone', 'phonenumber']) || undefined;
+
+                            this.logger.log(`Processing school row ${index + 1}: ${name || 'Unknown'}`);
+
+                            // Basic validation
+                            if (!name || !district || !shortCode || !contactName || !contactEmail) {
+                                const missing = [];
+                                if (!name) missing.push('name');
+                                if (!district) missing.push('district');
+                                if (!shortCode) missing.push('shortCode');
+                                if (!contactName) missing.push('contactName');
+                                if (!contactEmail) missing.push('contactEmail');
+                                throw new Error(`Missing required fields: ${missing.join(', ')}`);
+                            }
+
+                            const schoolData = {
+                                name,
+                                district,
+                                shortCode: shortCode.toUpperCase(),
+                                contactName,
+                                contactEmail,
+                                contactPhone: contactPhone || null,
+                            };
+
+                            // Upsert logic: find existing by name + district (the unique constraint)
+                            const existing = await this.prisma.school.findFirst({
+                                where: { name, district }
+                            });
+
+                            if (existing) {
+                                await this.prisma.school.update({
+                                    where: { id: existing.id },
+                                    data: schoolData
+                                });
+                            } else {
+                                await this.prisma.school.create({
+                                    data: schoolData
+                                });
+                            }
+                            report.success++;
+                        } catch (err: any) {
+                            const keys = Object.keys(row).join(', ');
+                            this.logger.error(`Row ${index + 1} failed: ${err.message}. Row keys: ${keys}`);
+                            report.failed++;
+                            report.errors.push(`Row ${index + 1} (${row.name || row.schoolname || 'Unknown'}): ${err.message} (Found columns: ${keys})`);
+                        }
+                    }
+                    this.logger.log(`Bulk import complete. Success: ${report.success}, Failed: ${report.failed}`);
+                    resolve(report);
+                })
+                .on('error', (err: any) => {
+                    this.logger.error(`CSV Parsing stream error: ${err.message}`);
+                    reject(new InternalServerErrorException('CSV parsing failed'));
+                });
+        });
     }
 }

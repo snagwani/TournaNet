@@ -32,6 +32,9 @@ pnpm install
 
 # Start development
 pnpm dev
+
+# Simulation & Sample Data
+See the [Simulation Guide](./simulation/README.md) for instructions on seeding the database and running tournament scenarios.
 ```
 
 ## Scale

@@ -124,7 +124,11 @@ export class AdminService {
                 gold,
                 silver,
                 bronze,
-                totalPoints: points
+                totalPoints: points,
+                shortCode: s.shortCode,
+                contactName: s.contactName,
+                contactEmail: s.contactEmail,
+                contactPhone: s.contactPhone
             };
         });
 
@@ -440,6 +444,8 @@ export class AdminService {
             category: e.category,
             gender: e.gender,
             date: e.date,
+            startTime: e.startTime,
+            venue: e.venue,
             gold: getMedalist(0),
             silver: getMedalist(1),
             bronze: getMedalist(2),
@@ -471,6 +477,10 @@ export class AdminService {
                 data = schoolReports.schools.map(s => ({
                     'School Name': s.schoolName,
                     'District': s.district,
+                    'Short Code': s.shortCode,
+                    'Contact Name': s.contactName,
+                    'Contact Email': s.contactEmail,
+                    'Contact Phone': s.contactPhone || '',
                     'Athletes': s.athletesCount,
                     'Events': s.eventsParticipated,
                     'Gold': s.gold,
@@ -478,20 +488,24 @@ export class AdminService {
                     'Bronze': s.bronze,
                     'Points': s.totalPoints
                 }));
-                fields = ['School Name', 'District', 'Athletes', 'Events', 'Gold', 'Silver', 'Bronze', 'Points'];
+                fields = ['School Name', 'District', 'Short Code', 'Contact Name', 'Contact Email', 'Contact Phone', 'Athletes', 'Events', 'Gold', 'Silver', 'Bronze', 'Points'];
                 break;
 
             case 'athletes':
-                const athleteReports = await this.getAthleteReports({});
-                data = athleteReports.athletes.map(a => ({
-                    'Name': a.athleteName,
-                    'Bib Number': a.bibNumber,
-                    'School': a.schoolName,
-                    'Category': a.category,
+                const athleteReports = await this.prisma.athlete.findMany({
+                    include: { school: true }
+                });
+                data = athleteReports.map(a => ({
+                    'Name': a.name,
+                    'Age': a.age,
                     'Gender': a.gender,
-                    'Events Count': a.eventsCount
+                    'Category': a.category,
+                    'School': a.school.name,
+                    'School ID': a.schoolId,
+                    'Bib Number': a.bibNumber,
+                    'Personal Best': a.personalBest || ''
                 }));
-                fields = ['Name', 'Bib Number', 'School', 'Category', 'Gender', 'Events Count'];
+                fields = ['Name', 'Age', 'Gender', 'Category', 'School', 'School ID', 'Bib Number', 'Personal Best'];
                 break;
 
             case 'medals':
@@ -514,6 +528,10 @@ export class AdminService {
                 data = eventReports.events.flatMap(e =>
                     e.results.map(r => ({
                         'Event': e.eventName,
+                        'Type': e.eventType,
+                        'Date': e.date,
+                        'Start Time': e.startTime,
+                        'Venue': e.venue || '',
                         'Category': e.category,
                         'Gender': e.gender,
                         'Athlete': r.athleteName,
@@ -524,7 +542,7 @@ export class AdminService {
                         'Status': r.status
                     }))
                 );
-                fields = ['Event', 'Category', 'Gender', 'Athlete', 'School', 'Bib', 'Rank', 'Result', 'Status'];
+                fields = ['Event', 'Type', 'Date', 'Start Time', 'Venue', 'Category', 'Gender', 'Athlete', 'School', 'Bib', 'Rank', 'Result', 'Status'];
                 break;
 
             default:

@@ -1,9 +1,11 @@
 import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Readable } from 'stream';
+import * as csv from 'csv-parser';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventDto } from './dto/event.dto';
-import { Prisma, EventType } from '@prisma/client';
+import { Prisma, EventType, Gender, AthleteCategory } from '@prisma/client';
 import { TOURNAMENT_TIMEZONE } from '../common/constants';
 import { fromZonedTime } from 'date-fns-tz';
 
@@ -174,5 +176,166 @@ export class EventsService {
                 throw new BadRequestException('FIELD events cannot have TRACK rule properties (maxAthletesPerHeat)');
             }
         }
+    }
+
+    async bulkImport(buffer: Buffer) {
+        this.logger.log('Starting bulk import of events...');
+
+        // Detect delimiter
+        const contentPreview = buffer.toString('utf-8', 0, 2048);
+        const headerLine = contentPreview.split(/[\r\n]+/)[0];
+        const counts = {
+            ',': (headerLine.match(/,/g) || []).length,
+            ';': (headerLine.match(/;/g) || []).length,
+            '\t': (headerLine.match(/\t/g) || []).length
+        };
+        let delimiter = ',';
+        if (counts[';'] > counts[',']) delimiter = ';';
+        if (counts['\t'] > counts[','] && counts['\t'] > counts[';']) delimiter = '\t';
+
+        this.logger.log(`Event import info: Line1: [${headerLine}] Delimiter: "${delimiter === '\t' ? '\\t' : delimiter}"`);
+
+        const results: any[] = [];
+        const stream = new Readable();
+        stream.push(buffer);
+        stream.push(null);
+
+        return new Promise((resolve, reject) => {
+            stream
+                .pipe(csv({
+                    separator: delimiter,
+                    mapHeaders: ({ header }) => {
+                        return header
+                            .replace(/^\uFEFF/, '')
+                            .replace(/"/g, '')
+                            .trim()
+                            .toLowerCase()
+                            .replace(/ /g, '')
+                            .replace(/_/g, '');
+                    }
+                }))
+                .on('data', (data: any) => {
+                    results.push(data);
+                })
+                .on('end', async () => {
+                    this.logger.log(`CSV parsing complete. Found ${results.length} rows.`);
+                    const report = {
+                        total: results.length,
+                        success: 0,
+                        failed: 0,
+                        errors: [] as string[]
+                    };
+
+                    const clean = (val: any) => (val || '').toString().trim().replace(/^"|"$/g, '');
+
+                    for (const [index, row] of results.entries()) {
+                        let currentName = 'Unknown';
+                        try {
+                            const findValue = (searchKeys: string[]) => {
+                                for (const searchKey of searchKeys) {
+                                    const foundKey = Object.keys(row).find(k => {
+                                        const cleanK = k.replace(/"/g, '').toLowerCase().replace(/ /g, '').replace(/_/g, '');
+                                        return searchKey === cleanK;
+                                    });
+                                    if (foundKey) return clean(row[foundKey]);
+                                }
+                                return '';
+                            };
+
+                            const name = findValue(['name', 'eventname', 'event']);
+                            currentName = name;
+                            const rawType = findValue(['eventtype', 'type']);
+                            const gender = findValue(['gender', 'sex']).toUpperCase() as Gender;
+                            const category = findValue(['category', 'division', 'agegroup']).toUpperCase() as AthleteCategory;
+                            const date = findValue(['date', 'eventdate', 'day']);
+                            const startTime = findValue(['starttime', 'time', 'start']);
+                            const venue = findValue(['venue', 'location', 'ground']) || undefined;
+
+                            this.logger.log(`Processing event ${index + 1}: ${name || 'Unknown'}`);
+
+                            // Basic validation
+                            if (!name || !rawType || !gender || !category || !date || !startTime) {
+                                const missing = [];
+                                if (!name) missing.push('name');
+                                if (!rawType) missing.push('eventType');
+                                if (!gender) missing.push('gender');
+                                if (!category) missing.push('category');
+                                if (!date) missing.push('date');
+                                if (!startTime) missing.push('startTime');
+
+                                // Check if user is using the wrong tool
+                                const isResultFile = Object.keys(row).some(k => ['bib', 'result', 'rank'].includes(k.toLowerCase().replace(/ /g, '')));
+                                if (isResultFile) {
+                                    throw new Error(`This looks like a Results file. Please use the Green "Import Results" button instead of the Event Importer.`);
+                                }
+
+                                throw new Error(`Missing required fields: ${missing.join(', ')}`);
+                            }
+
+                            const eventType = rawType.toUpperCase() as EventType;
+
+                            // Map rules from CSV columns
+                            const rules: any = {};
+                            const max_param_str = clean(row.maxparam || row.maxathletes || row.max);
+                            const max_param = parseInt(max_param_str);
+                            const rule_param = clean(row.ruleparam || row.rule);
+
+                            if (eventType === EventType.TRACK) {
+                                rules.maxAthletesPerHeat = max_param || 8;
+                                rules.qualificationRule = rule_param || 'TOP_2_PER_HEAT';
+                            } else {
+                                rules.maxAthletesPerFlight = max_param || 12;
+                                rules.attempts = parseInt(rule_param.split('_')[0]) || 3;
+                                rules.finalists = 8; // Default
+                            }
+
+                            // Upsert logic: find existing by name + date + category + gender
+                            const existing = await this.prisma.event.findFirst({
+                                where: {
+                                    name: { equals: name, mode: 'insensitive' },
+                                    date,
+                                    category: category as any,
+                                    gender: gender as any
+                                }
+                            });
+
+                            if (existing) {
+                                await this.prisma.event.update({
+                                    where: { id: existing.id },
+                                    data: {
+                                        startTime,
+                                        venue,
+                                        rules: rules as any
+                                    }
+                                });
+                            } else {
+                                const createDto: CreateEventDto = {
+                                    name,
+                                    eventType,
+                                    gender: gender as any,
+                                    category: category as any,
+                                    date,
+                                    startTime,
+                                    venue,
+                                    rules
+                                };
+                                await this.create(createDto);
+                            }
+                            report.success++;
+                        } catch (err: any) {
+                            const keys = Object.keys(row).join(', ');
+                            this.logger.error(`Event row ${index + 1} failed: ${err.message}. Row keys: ${keys}`);
+                            report.failed++;
+                            report.errors.push(`Row ${index + 1} (${currentName}): ${err.message} (Found columns: ${keys})`);
+                        }
+                    }
+                    this.logger.log(`Bulk event import complete. Success: ${report.success}, Failed: ${report.failed}`);
+                    resolve(report);
+                })
+                .on('error', (err: any) => {
+                    this.logger.error(`CSV Parsing stream error: ${err.message}`);
+                    reject(new InternalServerErrorException('CSV parsing failed'));
+                });
+        });
     }
 }

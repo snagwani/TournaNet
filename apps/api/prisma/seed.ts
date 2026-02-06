@@ -32,6 +32,11 @@ async function main() {
         { name: 'Delhi Public School', district: 'Delhi Central', shortCode: 'DPS' },
         { name: 'Heritage School', district: 'Pune West', shortCode: 'HS' },
         { name: 'Bright Future School', district: 'Bangalore East', shortCode: 'BFS' },
+        { name: 'Green Valley School', district: 'Mumbai East', shortCode: 'GVS' },
+        { name: 'Sunrise Public School', district: 'Pune Central', shortCode: 'SPS' },
+        { name: 'Bluebells Academy', district: 'Delhi West', shortCode: 'BBA' },
+        { name: 'Silver Oak School', district: 'Ahmedabad West', shortCode: 'SOS' },
+        { name: 'Mount Carmel School', district: 'Indore Central', shortCode: 'MCS' },
     ];
 
     const schoolRecords = [];
@@ -69,12 +74,15 @@ async function main() {
         // Past events (for results)
         { name: '100m Sprint', type: EventType.TRACK, date: yesterday, time: '09:00' },
         { name: '200m Sprint', type: EventType.TRACK, date: yesterday, time: '10:00' },
+        { name: '800m Run', type: EventType.TRACK, date: yesterday, time: '11:00' },
         // Today's events (for live/current)
         { name: '400m Dash', type: EventType.TRACK, date: today, time: '09:00' },
         { name: 'Long Jump', type: EventType.FIELD, date: today, time: '14:00' },
+        { name: '1500m Run', type: EventType.TRACK, date: today, time: '16:00' },
         // Future events (for upcoming)
         { name: 'High Jump', type: EventType.FIELD, date: tomorrow, time: '10:00' },
         { name: 'Shot Put', type: EventType.FIELD, date: nextWeek, time: '11:00' },
+        { name: '4x100m Relay', type: EventType.TRACK, date: nextWeek, time: '14:00' },
     ];
 
     const eventRecords = [];

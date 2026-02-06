@@ -1,0 +1,52 @@
+Event,Heat,Athlete Bib,Athlete Name,Result Value,Status,Rank
+100m Sprint,1,MUM-SMA-001,Rajesh Kumar,11.42s,FINISHED,1
+100m Sprint,1,MUM-GIS-001,Amit Singh,11.85s,FINISHED,2
+100m Sprint,1,DEL-DPS-001,Varun Chopra,12.10s,FINISHED,3
+100m Sprint,1,PUN-HS-002,Arjun Mehta,,DNS,
+
+100m Sprint,2,BAN-BFS-003,Rohit Nair,11.60s,FINISHED,1
+100m Sprint,2,MUM-SMA-004,Kunal Shah,,DNF,
+100m Sprint,2,DEL-DPS-005,Sameer Malhotra,,DQ,
+
+200m Sprint,1,MUM-GIS-006,Sachin Patil,23.40s,FINISHED,1
+200m Sprint,1,PUN-HS-007,Nikhil Yadav,23.95s,FINISHED,2
+200m Sprint,1,BAN-BFS-008,Akash Rao,,DQ,
+
+200m Sprint,2,MUM-SMA-009,Deepak Joshi,24.10s,FINISHED,1
+200m Sprint,2,DEL-DPS-010,Suresh Malhotra,,DNS,
+
+400m Sprint,1,BAN-BFS-011,Vivek Iyer,52.10s,FINISHED,1
+400m Sprint,1,MUM-SMA-012,Manoj Kulkarni,53.45s,FINISHED,2
+400m Sprint,1,DEL-DPS-013,Prateek Sharma,,DNF,
+
+1500m Run,1,DEL-DPS-017,Rahul Bansal,4:18.22,FINISHED,1
+1500m Run,1,MUM-SMA-018,Karan Mehta,4:21.80,FINISHED,2
+1500m Run,1,PUN-HS-019,Aditya Chauhan,,DNF,
+
+Long Jump,1,MUM-SMA-020,Priya Sharma,5.24m,FINISHED,1
+Long Jump,1,PUN-HS-021,Sneha Gupta,4.95m,FINISHED,2
+Long Jump,1,DEL-DPS-022,Ananya Verma,,DQ,
+
+High Jump,1,BAN-BFS-023,Riya Nair,1.62m,FINISHED,1
+High Jump,1,MUM-GIS-024,Kavita Desai,1.58m,FINISHED,2
+High Jump,1,PUN-HS-025,Pallavi Patil,,DNS,
+
+Shot Put,1,DEL-DPS-026,Neha Arora,11.80m,FINISHED,1
+Shot Put,1,MUM-SMA-027,Meena Joshi,11.20m,FINISHED,2
+Shot Put,1,BAN-BFS-028,Sunita Rao,,DNS,
+
+Discus Throw,1,MUM-GIS-029,Rahul Pawar,38.40m,FINISHED,1
+Discus Throw,1,PUN-HS-030,Ashish Kulkarni,36.90m,FINISHED,2
+Discus Throw,1,DEL-DPS-031,Mohit Bansal,,DQ,
+
+Javelin Throw,1,BAN-BFS-032,Vikas Shetty,52.30m,FINISHED,1
+Javelin Throw,1,MUM-SMA-033,Rakesh Yadav,50.10m,FINISHED,2
+Javelin Throw,1,PUN-HS-034,Sunil Chauhan,,DNF,
+
+4x100m Relay,1,SMA-TEAM,St. Marys Academy,48.20s,FINISHED,1
+4x100m Relay,1,GIS-TEAM,Global International School,49.10s,FINISHED,2
+4x100m Relay,1,DPS-TEAM,Delhi Public School,,DQ,
+
+4x400m Relay,1,PUN-HS-TEAM,Heritage School Pune,3:28.40s,FINISHED,1
+4x400m Relay,1,BAN-BFS-TEAM,Bright Future School,,DNF,
+4x400m Relay,1,MUM-SMA-TEAM,St. Marys Academy,3:34.00s,FINISHED,2

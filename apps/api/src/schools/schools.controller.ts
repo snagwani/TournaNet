@@ -28,4 +28,13 @@ export class SchoolsController {
     ): Promise<SchoolDto> {
         return this.schoolsService.create(createSchoolDto, file);
     }
+
+    @Post('bulk-import')
+    @UseInterceptors(FileInterceptor('file'))
+    async bulkImport(@UploadedFile() file: Express.Multer.File) {
+        if (!file) {
+            throw new Error('CSV file is required');
+        }
+        return this.schoolsService.bulkImport(file.buffer);
+    }
 }

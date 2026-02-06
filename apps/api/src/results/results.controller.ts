@@ -1,4 +1,5 @@
-import { Controller, Post, Param, Body, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Param, Body, UsePipes, ValidationPipe, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ResultsService } from './results.service';
 import { SubmitResultsDto } from './dto/submit-results.dto';
 import { ResultsResponseDto } from './dto/results-response.dto';

@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Patch, Query, Param, Body, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Query, Param, Body, UsePipes, ValidationPipe, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -50,5 +51,15 @@ export class EventsController {
     }))
     async create(@Body() createEventDto: CreateEventDto): Promise<EventDto> {
         return this.eventsService.create(createEventDto);
+    }
+
+    @Post('bulk-import')
+    @Roles(UserRole.ADMIN)
+    @UseInterceptors(FileInterceptor('file'))
+    async bulkImport(@UploadedFile() file: Express.Multer.File) {
+        if (!file) {
+            throw new Error('CSV file is required');
+        }
+        return this.eventsService.bulkImport(file.buffer);
     }
 }

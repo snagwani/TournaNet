@@ -1,0 +1,18 @@
+name,district,shortCode,contactName,contactEmail,contactPhone
+"St. Marys Academy","Mumbai North","SMA","Principal SMA","contact@sma.edu","+91 9876543210"
+"Global International","Mumbai South","GIS","Principal GIS","contact@gis.edu","+91 9876543211"
+"Delhi Public School","Delhi Central","DPS","Principal DPS","contact@dps.edu","+91 9876543212"
+"Heritage School","Pune West","HS","Principal HS","contact@hs.edu","+91 9876543213"
+"Bright Future School","Bangalore East","BFS","Principal BFS","contact@bfs.edu","+91 9876543214"
+
+"Green Valley School","Mumbai East","GVS","Principal GVS","contact@gvs.edu","+91 9876543215"
+"Sunrise Public School","Pune Central","SPS","Principal SPS","contact@sps.edu","+91 9876543216"
+"Oxford Model School","Delhi South","OMS","Principal OMS","contact@oms.edu","+91 9876543217"
+"Riverdale High","Bangalore North","RDH","Principal RDH","contact@rdh.edu","+91 9876543218"
+"Bluebells Academy","Delhi West","BBA","Principal BBA","contact@bba.edu","+91 9876543219"
+
+"Silver Oak School","Ahmedabad West","SOS","Principal SOS","contact@sos.edu","+91 9876543220"
+"Mount Carmel School","Indore Central","MCS","Principal MCS","contact@mcs.edu","+91 9876543221"
+"Little Flower School","Chennai South","LFS","Principal LFS","contact@lfs.edu","+91 9876543222"
+"St. Xavier’s High School","Kolkata Central","SXH","Principal SXH","contact@sxh.edu","+91 9876543223"
+"National Public School","Bangalore South","NPS","Principal NPS","contact@nps.edu","+91 9876543224"

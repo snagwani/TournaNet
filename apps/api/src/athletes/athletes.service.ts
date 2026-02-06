@@ -1,4 +1,6 @@
 import { Injectable, Logger, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Readable } from 'stream';
+import * as csv from 'csv-parser';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateAthleteDto } from './dto/create-athlete.dto';
 import { AthleteDto } from './dto/athlete.dto';
@@ -111,19 +113,51 @@ export class AthletesService {
     }
 
     async bulkImport(buffer: Buffer) {
-        const results: any[] = [];
-        const Readable = require('stream').Readable;
-        const csv = require('csv-parser');
+        this.logger.log('Starting bulk import of athletes...');
 
+        // Detect encoding/BOM and get start of file
+        const contentPreview = buffer.toString('utf-8', 0, 2048);
+        const headerLine = contentPreview.split(/[\r\n]+/)[0];
+
+        // Smarter delimiter detection: count occurrences of , ; \t
+        const counts = {
+            ',': (headerLine.match(/,/g) || []).length,
+            ';': (headerLine.match(/;/g) || []).length,
+            '\t': (headerLine.match(/\t/g) || []).length
+        };
+
+        let delimiter = ',';
+        if (counts[';'] > counts[',']) delimiter = ';';
+        if (counts['\t'] > counts[','] && counts['\t'] > counts[';']) delimiter = '\t';
+
+        this.logger.log(`Athlete import info: Line1: [${headerLine}] Delimiter: "${delimiter === '\t' ? '\\t' : delimiter}"`);
+
+        const results: any[] = [];
         const stream = new Readable();
         stream.push(buffer);
         stream.push(null);
 
         return new Promise((resolve, reject) => {
             stream
-                .pipe(csv())
-                .on('data', (data: any) => results.push(data))
+                .pipe(csv({
+                    separator: delimiter,
+                    mapHeaders: ({ header }) => {
+                        // Strip BOM, ALL quotes, and normalize
+                        const normalized = header
+                            .replace(/^\uFEFF/, '')
+                            .replace(/"/g, '') // Remove all quotes
+                            .trim()
+                            .toLowerCase()
+                            .replace(/ /g, '')
+                            .replace(/_/g, '');
+                        return normalized;
+                    }
+                }))
+                .on('data', (data: any) => {
+                    results.push(data);
+                })
                 .on('end', async () => {
+                    this.logger.log(`CSV parsing complete. Found ${results.length} rows.`);
                     const report = {
                         total: results.length,
                         success: 0,
@@ -131,43 +165,113 @@ export class AthletesService {
                         errors: [] as string[]
                     };
 
+                    const clean = (val: any) => (val || '').toString().trim().replace(/^"|"$/g, '');
+
                     for (const [index, row] of results.entries()) {
+                        let currentName = 'Unknown';
                         try {
-                            // Basic validation
-                            if (!row.name || !row.gender || !row.category || !row.age || !row.schoolId) {
-                                throw new Error(`Missing required fields`);
-                            }
-
-                            const gender = row.gender.toUpperCase() as Gender;
-                            const category = row.category.toUpperCase() as AthleteCategory;
-                            const age = parseInt(row.age);
-
-                            // Validate Age
-                            const rules = this.AGE_RULES[category];
-                            if (!rules || age < rules.min || age > rules.max) {
-                                throw new Error(`Age ${age} invalid for category ${category}`);
-                            }
-
-                            // Build local DTO matching create() expectations
-                            const createDto: CreateAthleteDto = {
-                                name: row.name,
-                                age,
-                                gender,
-                                category,
-                                schoolId: row.schoolId,
-                                personalBest: row.personalBest || undefined
+                            // Priority-based mapping - check keys in the order provided
+                            const findValue = (searchKeys: string[]) => {
+                                for (const searchKey of searchKeys) {
+                                    const foundKey = Object.keys(row).find(k => {
+                                        const cleanK = k.replace(/"/g, '').toLowerCase().replace(/ /g, '').replace(/_/g, '');
+                                        return searchKey === cleanK;
+                                    });
+                                    if (foundKey) return clean(row[foundKey]);
+                                }
+                                return '';
                             };
 
-                            await this.create(createDto);
+                            const name = findValue(['name', 'athletename', 'fullname', 'athlete', 'participant']);
+                            const gender = findValue(['gender', 'sex']).toUpperCase() as Gender;
+                            const category = findValue(['category', 'division', 'agegroup']).toUpperCase() as AthleteCategory;
+                            const ageRaw = findValue(['age', 'athleteage', 'years']);
+                            const age = parseInt(ageRaw);
+                            const schoolId = findValue(['schoolid', 'schooluuid', 'schoolcode', 'school']);
+                            const personalBest = findValue(['personalbest', 'pb', 'besttime', 'mark']) || undefined;
+
+                            currentName = name || `Row ${index + 1}`;
+
+                            // Check for empty row
+                            if (Object.values(row).every(v => clean(v) === '')) {
+                                report.total--; // Don't count empty rows toward total
+                                continue;
+                            }
+
+                            // Basic validation
+                            if (!name || !gender || !category || !age || !schoolId) {
+                                const missing = [];
+                                if (!name) missing.push('name');
+                                if (!gender) missing.push('gender');
+                                if (!category) missing.push('category');
+                                if (!ageRaw) missing.push('age');
+                                if (!schoolId) missing.push('schoolId');
+                                throw new Error(`Missing required fields: ${missing.join(', ')}`);
+                            }
+
+                            // Resolve schoolId: Try provided ID first, fallback to Name lookup
+                            let resolvedSchoolId = schoolId;
+                            const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(schoolId);
+
+                            const schoolExists = looksLikeUuid ? await this.prisma.school.findUnique({ where: { id: schoolId } }) : null;
+
+                            if (!schoolExists) {
+                                // Try lookup by name (case-insensitive)
+                                const schoolByName = await this.prisma.school.findFirst({
+                                    where: { name: { equals: schoolId, mode: 'insensitive' } }
+                                });
+                                if (schoolByName) {
+                                    resolvedSchoolId = schoolByName.id;
+                                    this.logger.debug(`Resolved school "${schoolId}" to ID: ${resolvedSchoolId}`);
+                                } else {
+                                    throw new Error(`School not found: "${schoolId}". Please ensure the school is registered first.`);
+                                }
+                            }
+
+                            // Upsert logic: find existing by name + school
+                            const existing = await this.prisma.athlete.findFirst({
+                                where: {
+                                    name: { equals: name, mode: 'insensitive' },
+                                    schoolId: resolvedSchoolId
+                                }
+                            });
+
+                            if (existing) {
+                                await this.prisma.athlete.update({
+                                    where: { id: existing.id },
+                                    data: {
+                                        age,
+                                        gender,
+                                        category,
+                                        personalBest: personalBest ?? null,
+                                    }
+                                });
+                            } else {
+                                const createDto: CreateAthleteDto = {
+                                    name,
+                                    age,
+                                    gender,
+                                    category,
+                                    schoolId: resolvedSchoolId,
+                                    personalBest
+                                };
+                                await this.create(createDto);
+                            }
                             report.success++;
                         } catch (err: any) {
+                            const keys = Object.keys(row).join(', ');
+                            this.logger.error(`Athlete row ${index + 1} failed: ${err.message}. Row keys: ${keys}`);
                             report.failed++;
-                            report.errors.push(`Row ${index + 1}: ${err.message}`);
+                            report.errors.push(`Row ${index + 1} (${currentName}): ${err.message} (Found columns: ${keys})`);
                         }
                     }
+                    this.logger.log(`Bulk athlete import complete. Success: ${report.success}, Failed: ${report.failed}`);
                     resolve(report);
                 })
-                .on('error', (err: any) => reject(new InternalServerErrorException('CSV parsing failed')));
+                .on('error', (err: any) => {
+                    this.logger.error(`Athlete CSV stream error: ${err.message}`);
+                    reject(new InternalServerErrorException('CSV parsing failed'));
+                });
         });
     }
 }

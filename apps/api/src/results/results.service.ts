@@ -3,6 +3,8 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { SubmitResultsDto, ResultStatus, ResultEntryDto } from './dto/submit-results.dto';
 import { ResultsResponseDto, RankedResultDto } from './dto/results-response.dto';
 import { EventType } from '@prisma/client';
+import { Readable } from 'stream';
+const csv = require('csv-parser');
 
 @Injectable()
 export class ResultsService {
@@ -149,6 +151,153 @@ export class ResultsService {
         }));
 
         return [...rankedFinished, ...mappedOthers];
+    }
+
+    async bulkImport(buffer: Buffer) {
+        this.logger.log('Starting bulk import of results...');
+
+        const contentPreview = buffer.toString('utf-8', 0, 2048);
+        const headerLine = contentPreview.split(/[\r\n]+/)[0];
+        const counts = {
+            ',': (headerLine.match(/,/g) || []).length,
+            ';': (headerLine.match(/;/g) || []).length,
+            '\t': (headerLine.match(/\t/g) || []).length
+        };
+        let delimiter = ',';
+        if (counts[';'] > counts[',']) delimiter = ';';
+        if (counts['\t'] > counts[','] && counts['\t'] > counts[';']) delimiter = '\t';
+
+        const results: any[] = [];
+        const stream = new Readable();
+        stream.push(buffer);
+        stream.push(null);
+
+        return new Promise((resolve, reject) => {
+            stream
+                .pipe(csv({
+                    separator: delimiter,
+                    mapHeaders: ({ header }: { header: string }) => header.replace(/^\uFEFF/, '').replace(/"/g, '').trim().toLowerCase().replace(/ /g, '').replace(/_/g, '')
+                }))
+                .on('data', (data: any) => results.push(data))
+                .on('end', async () => {
+                    const report = { total: results.length, success: 0, failed: 0, errors: [] as string[] };
+                    const clean = (val: any) => (val || '').toString().trim().replace(/^"|"$/g, '');
+
+                    const affectedEventIds = new Set<string>();
+
+                    for (const [index, row] of results.entries()) {
+                        try {
+                            const findValue = (keys: string[]) => {
+                                for (const k of keys) {
+                                    const match = Object.keys(row).find(rk => rk.replace(/"/g, '').toLowerCase().replace(/ /g, '').replace(/_/g, '') === k);
+                                    if (match) return clean(row[match]);
+                                }
+                                return '';
+                            };
+
+                            const eventName = findValue(['event', 'eventname']);
+                            const bibNumber = findValue(['bib', 'bibnumber', 'athletebib']);
+                            const resultValue = findValue(['result', 'resultvalue', 'mark', 'time']);
+                            const statusRaw = findValue(['status']).toUpperCase();
+                            const notes = findValue(['notes', 'remark']);
+
+                            if (!eventName || !bibNumber || !statusRaw) {
+                                throw new Error(`Missing required fields: event, bib, status`);
+                            }
+
+                            // 1. Find Athlete
+                            const athlete = await this.prisma.athlete.findUnique({
+                                where: { bibNumber },
+                                include: { school: true }
+                            });
+                            if (!athlete) throw new Error(`Athlete with Bib ${bibNumber} not found`);
+
+                            // 2. Find Event
+                            const event = await this.prisma.event.findFirst({
+                                where: { name: { equals: eventName, mode: 'insensitive' } }
+                            });
+                            if (!event) throw new Error(`Event "${eventName}" not found`);
+                            affectedEventIds.add(event.id);
+
+                            // 3. Find Heat for this athlete in this event
+                            const heat = await this.prisma.heat.findFirst({
+                                where: {
+                                    eventId: event.id,
+                                    lanes: { some: { athleteId: athlete.id } }
+                                }
+                            });
+                            if (!heat) throw new Error(`Athlete ${athlete.name} is not assigned to any heat for event "${eventName}"`);
+
+                            // 4. Upsert Result
+                            const status = statusRaw as any; // Cast to ResultStatus
+
+                            await this.prisma.result.upsert({
+                                where: {
+                                    heatId_athleteId: {
+                                        athleteId: athlete.id,
+                                        heatId: heat.id
+                                    }
+                                },
+                                update: {
+                                    status,
+                                    resultValue: resultValue || null,
+                                    notes: notes || null
+                                },
+                                create: {
+                                    athleteId: athlete.id,
+                                    heatId: heat.id,
+                                    bibNumber: athlete.bibNumber,
+                                    status,
+                                    resultValue: resultValue || null,
+                                    notes: notes || null
+                                }
+                            });
+
+                            report.success++;
+                        } catch (err: any) {
+                            const keys = Object.keys(row).join(',');
+                            this.logger.error(`Result row ${index + 1} failed: ${err.message}`);
+                            report.failed++;
+                            report.errors.push(`Row ${index + 1}: ${err.message} (Columns: ${keys})`);
+                        }
+                    }
+
+                    // 5. Re-calculate ranks for events we touched
+                    for (const eventId of affectedEventIds) {
+                        try {
+                            const event = await this.prisma.event.findUnique({
+                                where: { id: eventId },
+                                include: { heats: { include: { results: true } } }
+                            });
+                            if (!event) continue;
+
+                            for (const heat of event.heats) {
+                                const resEntries = heat.results.map(r => ({
+                                    athleteId: r.athleteId,
+                                    bibNumber: r.bibNumber,
+                                    status: r.status,
+                                    resultValue: r.resultValue,
+                                    notes: r.notes
+                                }));
+                                const ranked = this.calculateRanks(resEntries as any, event.eventType);
+
+                                for (const r of ranked) {
+                                    await this.prisma.result.update({
+                                        where: { heatId_athleteId: { heatId: heat.id, athleteId: r.athleteId } },
+                                        data: { rank: r.rank }
+                                    });
+                                }
+                            }
+                        } catch (err: any) {
+                            this.logger.error(`Failed to re-calculate ranks for event ${eventId}: ${err.message}`);
+                        }
+                    }
+
+                    this.logger.log(`Bulk results import complete. Success: ${report.success}, Failed: ${report.failed}`);
+                    resolve(report);
+                })
+                .on('error', (err: Error) => reject(err));
+        });
     }
 
     private parseValue(val: string | null): number {
